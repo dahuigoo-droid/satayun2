@@ -36,11 +36,11 @@ if st.session_state.get('logged_in', False):
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.page_link("pages/4_🔧서비스작업.py", label="🔧 서비스 작업", icon="🔧")
+        st.page_link("pages/4_서비스작업.py", label="🔧 서비스 작업", icon="🔧")
     with col2:
-        st.page_link("pages/1_📢공지사항.py", label="📢 공지사항", icon="📢")
+        st.page_link("pages/1_공지사항.py", label="📢 공지사항", icon="📢")
     with col3:
-        st.page_link("pages/2_📚자료실.py", label="📚 자료실", icon="📚")
+        st.page_link("pages/2_자료실.py", label="📚 자료실", icon="📚")
     
     st.stop()
 
