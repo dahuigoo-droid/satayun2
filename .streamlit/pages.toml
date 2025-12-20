@@ -1,6 +1,6 @@
 [[pages]]
 path = "app.py"
-name = "업무현황"
+name = "Login/업무현황"
 icon = "📋"
 
 [[pages]]
