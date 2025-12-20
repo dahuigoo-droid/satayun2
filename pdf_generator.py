@@ -266,9 +266,12 @@ class PDFGenerator:
         self.usable_width = self.width - self.margin_left - self.margin_right
         self.usable_height = self.height - self.margin_top - self.margin_bottom
         
-        # 한 줄 글자 수 계산 (장평 반영)
-        char_width_pt = self.font_size_body * 0.6 * self.char_width
+        # 한 줄 글자 수 계산 (한글은 full-width이므로 font_size와 거의 동일)
+        char_width_pt = self.font_size_body * 1.0 * self.char_width
         self.chars_per_line = int(self.usable_width / char_width_pt)
+        
+        print(f"[PDF설정] 여백: 상{margin_top}mm 하{margin_bottom}mm 좌{margin_left}mm 우{margin_right}mm")
+        print(f"[PDF설정] 글자수/줄: {self.chars_per_line}, 본문크기: {font_size_body}pt")
         
     def create_pdf(
         self,
@@ -329,12 +332,15 @@ class PDFGenerator:
     def _draw_cover_page(self, c, cover_image, customer_name, service_type, customer_name2=None):
         """표지 페이지 그리기"""
         # 배경 이미지
-        if cover_image and os.path.exists(cover_image):
+        print(f"[표지] 이미지 경로: {cover_image}")
+        if cover_image:
             try:
+                # 경로 존재 여부와 관계없이 시도
                 c.drawImage(cover_image, 0, 0, width=self.width, height=self.height, 
                            preserveAspectRatio=False, mask='auto')
+                print(f"[표지] 이미지 적용 성공")
             except Exception as e:
-                print(f"표지 이미지 오류: {e}")
+                print(f"[표지] 이미지 오류: {e}")
         
         # 고객 이름
         c.setFont(self.font_name, self.font_size_title + 4)
@@ -363,12 +369,14 @@ class PDFGenerator:
     
     def _draw_image_page(self, c, image_path):
         """이미지 전체 페이지 그리기"""
-        if image_path and os.path.exists(image_path):
+        print(f"[이미지페이지] 경로: {image_path}")
+        if image_path:
             try:
                 c.drawImage(image_path, 0, 0, width=self.width, height=self.height, 
                            preserveAspectRatio=False, mask='auto')
+                print(f"[이미지페이지] 적용 성공")
             except Exception as e:
-                print(f"이미지 오류: {e}")
+                print(f"[이미지페이지] 오류: {e}")
         c.showPage()
     
     def _draw_toc_page(self, c, chapters_content):
@@ -437,12 +445,12 @@ class PDFGenerator:
     
     def _start_new_page(self, c, background_image):
         """새 페이지 시작 (배경 이미지 적용)"""
-        if background_image and os.path.exists(background_image):
+        if background_image:
             try:
                 c.drawImage(background_image, 0, 0, width=self.width, height=self.height, 
                            preserveAspectRatio=False, mask='auto')
             except Exception as e:
-                print(f"배경 이미지 오류: {e}")
+                print(f"[배경] 이미지 오류: {e}")
 
 
 # ============================================
