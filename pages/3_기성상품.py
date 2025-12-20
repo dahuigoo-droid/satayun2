@@ -46,6 +46,10 @@ if 'std_progress' not in st.session_state:
     st.session_state.std_progress = {}
 if 'std_completed' not in st.session_state:
     st.session_state.std_completed = set()
+if 'std_reset_counter' not in st.session_state:
+    st.session_state.std_reset_counter = 0
+if 'std_select_all' not in st.session_state:
+    st.session_state.std_select_all = False
 
 # =====================================================
 # 탭 구성
@@ -87,13 +91,15 @@ with tab1:
             with fcol3:
                 new_letter_spacing = st.slider("자간 %", -5, 10, 0, key="new_std_ls")
             
-            fcol4, fcol5, fcol6 = st.columns(3)
+            fcol4, fcol5, fcol6, fcol7 = st.columns(4)
             with fcol4:
                 new_title_size = st.number_input("대제목", value=30, min_value=12, max_value=48, key="new_std_title")
             with fcol5:
                 new_subtitle_size = st.number_input("소제목", value=23, min_value=10, max_value=36, key="new_std_subtitle")
             with fcol6:
                 new_body_size = st.number_input("본문", value=18, min_value=8, max_value=24, key="new_std_body")
+            with fcol7:
+                new_char_width = st.slider("장평 %", 50, 150, 100, key="new_std_cw")
             
             st.markdown("**📐 여백 설정 (mm)**")
             mcol1, mcol2, mcol3, mcol4 = st.columns(4)
@@ -133,6 +139,7 @@ with tab1:
                         'font_size_body': new_body_size,
                         'line_height': new_line_height,
                         'letter_spacing': new_letter_spacing,
+                        'char_width': new_char_width,
                         'margin_top': new_mt,
                         'margin_bottom': new_mb,
                         'margin_left': new_ml,
@@ -195,14 +202,17 @@ with tab1:
                     with fcol3:
                         edit_letter_spacing = st.slider("자간 %", -5, 10, product.get('letter_spacing', 0), key="edit_std_ls")
                     
-                    fcol4, fcol5, fcol6 = st.columns(3)
+                    fcol4, fcol5, fcol6, fcol7 = st.columns(4)
                     with fcol4:
                         edit_title_size = st.number_input("대제목", value=product.get('font_size_title', 30), key="edit_std_title")
                     with fcol5:
                         edit_subtitle_size = st.number_input("소제목", value=product.get('font_size_subtitle', 23), key="edit_std_subtitle")
                     with fcol6:
                         edit_body_size = st.number_input("본문", value=product.get('font_size_body', 18), key="edit_std_body")
+                    with fcol7:
+                        edit_char_width = st.slider("장평 %", 50, 150, product.get('char_width', 100), key="edit_std_cw")
                     
+                    st.markdown("**📐 여백 설정 (mm)**")
                     mcol1, mcol2, mcol3, mcol4 = st.columns(4)
                     with mcol1:
                         edit_mt = st.number_input("상단", value=product.get('margin_top', 25), key="edit_std_mt")
@@ -243,6 +253,7 @@ with tab1:
                         product['font_size_body'] = edit_body_size
                         product['line_height'] = edit_line_height
                         product['letter_spacing'] = edit_letter_spacing
+                        product['char_width'] = edit_char_width
                         product['margin_top'] = edit_mt
                         product['margin_bottom'] = edit_mb
                         product['margin_left'] = edit_ml
@@ -368,7 +379,8 @@ with tab2:
     
     # ===== 엑셀 업로드 =====
     if input_mode == "📊 엑셀 업로드":
-        uploaded_excel = st.file_uploader("엑셀 파일 업로드 (.xlsx, .xls)", type=['xlsx', 'xls'], key="std_excel")
+        uploaded_excel = st.file_uploader("엑셀 파일 업로드 (.xlsx, .xls)", type=['xlsx', 'xls'], 
+                                           key=f"std_excel_{st.session_state.std_reset_counter}")
         
         if uploaded_excel:
             try:
@@ -386,7 +398,8 @@ with tab2:
         st.caption("💡 파일명 = 고객명으로 매칭됩니다 (예: 홍길동.txt)")
         
         uploaded_txts = st.file_uploader("TXT 파일 업로드 (여러 개 가능)", type=['txt'], 
-                                          accept_multiple_files=True, key="std_txt")
+                                          accept_multiple_files=True, 
+                                          key=f"std_txt_{st.session_state.std_reset_counter}")
         
         if uploaded_txts:
             customers = []
@@ -406,17 +419,19 @@ with tab2:
     elif input_mode == "✍️ 직접 입력":
         st.markdown("**고객 정보 입력**")
         
+        rc = st.session_state.std_reset_counter  # 짧은 변수명
+        
         col1, col2 = st.columns(2)
         with col1:
-            di_name = st.text_input("이름", key="std_di_name")
-            di_birth = st.date_input("생년월일", key="std_di_birth")
-            di_time = st.time_input("태어난 시간", key="std_di_time")
+            di_name = st.text_input("이름", key=f"std_di_name_{rc}")
+            di_birth = st.date_input("생년월일", key=f"std_di_birth_{rc}")
+            di_time = st.time_input("태어난 시간", key=f"std_di_time_{rc}")
         with col2:
-            di_lunar = st.radio("음력/양력", ["양력", "음력"], horizontal=True, key="std_di_lunar")
-            di_gender = st.radio("성별", ["남", "여"], horizontal=True, key="std_di_gender")
+            di_lunar = st.radio("음력/양력", ["양력", "음력"], horizontal=True, key=f"std_di_lunar_{rc}")
+            di_gender = st.radio("성별", ["남", "여"], horizontal=True, key=f"std_di_gender_{rc}")
             di_mbti = st.selectbox("MBTI", ["선택안함"] + ["INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP", 
-                                                          "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"], key="std_di_mbti")
-            di_blood = st.selectbox("혈액형", ["선택안함", "A형", "B형", "O형", "AB형"], key="std_di_blood")
+                                                          "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"], key=f"std_di_mbti_{rc}")
+            di_blood = st.selectbox("혈액형", ["선택안함", "A형", "B형", "O형", "AB형"], key=f"std_di_blood_{rc}")
         
         if st.button("➕ 고객 추가", type="primary"):
             if di_name:
@@ -443,18 +458,30 @@ with tab2:
         
         col_all, col_reset = st.columns([1, 1])
         with col_all:
-            select_all = st.checkbox("✅ 전체 선택", key="std_select_all")
-            if select_all:
-                st.session_state.std_selected_customers = set(range(len(st.session_state.std_customers)))
-            else:
-                # 전체 선택 해제 시 개별 선택 유지
-                pass
+            # 전체선택 체크박스
+            select_all = st.checkbox(
+                "✅ 전체 선택", 
+                value=st.session_state.std_select_all,
+                key=f"std_select_all_chk_{st.session_state.std_reset_counter}"
+            )
+            
+            # 전체선택 상태가 바뀌면 반영
+            if select_all != st.session_state.std_select_all:
+                st.session_state.std_select_all = select_all
+                if select_all:
+                    st.session_state.std_selected_customers = set(range(len(st.session_state.std_customers)))
+                else:
+                    st.session_state.std_selected_customers = set()
+                st.rerun()
+                
         with col_reset:
             if st.button("🔄 초기화", use_container_width=True):
                 st.session_state.std_customers = []
                 st.session_state.std_selected_customers = set()
                 st.session_state.std_progress = {}
                 st.session_state.std_completed = set()
+                st.session_state.std_select_all = False
+                st.session_state.std_reset_counter += 1  # 파일 업로더 리셋
                 st.toast("🔄 초기화되었습니다!")
                 st.rerun()
         
@@ -466,7 +493,7 @@ with tab2:
             
             with col_check:
                 is_checked = idx in st.session_state.std_selected_customers
-                if st.checkbox("", value=is_checked or select_all, key=f"std_chk_{idx}", label_visibility="collapsed"):
+                if st.checkbox("", value=is_checked, key=f"std_chk_{idx}_{st.session_state.std_reset_counter}", label_visibility="collapsed"):
                     st.session_state.std_selected_customers.add(idx)
                 else:
                     st.session_state.std_selected_customers.discard(idx)
