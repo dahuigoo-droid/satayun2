@@ -158,30 +158,46 @@ if st.session_state.get('logged_in', False):
                     st.caption(f"👤 {task.get('author_name', '알 수 없음')} | 📅 {str(task.get('created_at', ''))[:10]} | 상태: {status}")
                     
                     # 내용 (접기)
-                    with st.expander("내용 보기", expanded=False):
+                    with st.expander("내용 보기 / 수정", expanded=False):
                         st.markdown(task.get('content', ''))
                         
                         # 수정/삭제 (작성자 또는 관리자만)
                         if task.get('author_id') == user['id'] or is_admin:
                             st.markdown("---")
+                            st.markdown("**✏️ 수정하기**")
                             
-                            edit_col1, edit_col2, edit_col3 = st.columns(3)
+                            # 제목 수정
+                            edit_title = st.text_input(
+                                "제목",
+                                value=task.get('title', ''),
+                                key=f"edit_title_{task['id']}"
+                            )
                             
-                            with edit_col1:
-                                edit_status = st.selectbox(
-                                    "상태 변경",
-                                    ["진행중", "완료", "보류", "긴급"],
-                                    index=["진행중", "완료", "보류", "긴급"].index(status) if status in ["진행중", "완료", "보류", "긴급"] else 0,
-                                    key=f"edit_status_{task['id']}"
-                                )
+                            # 내용 수정
+                            edit_content = st.text_area(
+                                "내용",
+                                value=task.get('content', ''),
+                                height=100,
+                                key=f"edit_content_{task['id']}"
+                            )
                             
-                            with edit_col2:
-                                if st.button("💾 상태 저장", key=f"save_{task['id']}", use_container_width=True):
-                                    update_task(task['id'], status=edit_status)
-                                    st.toast("✅ 상태가 변경되었습니다!")
+                            # 상태 변경
+                            edit_status = st.selectbox(
+                                "상태",
+                                ["진행중", "완료", "보류", "긴급"],
+                                index=["진행중", "완료", "보류", "긴급"].index(status) if status in ["진행중", "완료", "보류", "긴급"] else 0,
+                                key=f"edit_status_{task['id']}"
+                            )
+                            
+                            btn_col1, btn_col2 = st.columns(2)
+                            
+                            with btn_col1:
+                                if st.button("💾 수정 저장", key=f"save_{task['id']}", type="primary", use_container_width=True):
+                                    update_task(task['id'], title=edit_title, content=edit_content, status=edit_status)
+                                    st.toast("✅ 수정되었습니다!")
                                     st.rerun()
                             
-                            with edit_col3:
+                            with btn_col2:
                                 if st.button("🗑️ 삭제", key=f"del_{task['id']}", use_container_width=True):
                                     delete_task(task['id'])
                                     st.toast("🗑️ 삭제되었습니다!")
