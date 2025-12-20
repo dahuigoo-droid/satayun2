@@ -266,3 +266,6 @@ def log_notification(
     print(f"[알림 로그] {log_entry}")
     
     return log_entry
+
+# 호환성을 위한 별칭
+send_email_with_attachment = send_email_with_pdf
