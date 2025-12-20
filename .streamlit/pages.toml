@@ -1,6 +1,6 @@
 [[pages]]
 path = "app.py"
-name = "Login/업무현황"
+name = "업무현황"
 icon = "📋"
 
 [[pages]]
@@ -14,21 +14,16 @@ name = "자료실"
 icon = "📚"
 
 [[pages]]
-path = "pages/3_기성상품등록.py"
-name = "기성상품등록"
+path = "pages/3_상품관리.py"
+name = "상품관리"
 icon = "📦"
 
 [[pages]]
-path = "pages/4_서비스작업.py"
-name = "서비스작업"
-icon = "🔧"
-
-[[pages]]
-path = "pages/5_마이페이지.py"
+path = "pages/4_마이페이지.py"
 name = "마이페이지"
 icon = "👤"
 
 [[pages]]
-path = "pages/6_관리자설정.py"
+path = "pages/5_관리자설정.py"
 name = "관리자설정"
 icon = "⚙️"
