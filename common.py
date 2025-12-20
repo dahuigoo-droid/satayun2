@@ -42,7 +42,7 @@ def get_supabase_client():
 supabase_client = get_supabase_client()
 
 # 버킷 이름
-STORAGE_BUCKET = "satayun2"
+STORAGE_BUCKET = "images"
 
 # ============================================
 # 임포트
