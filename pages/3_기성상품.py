@@ -116,10 +116,16 @@ with tab1:
             icol1, icol2, icol3 = st.columns(3)
             with icol1:
                 new_cover_img = st.file_uploader("표지 이미지", type=['jpg','jpeg','png'], key="new_std_cover")
+                if new_cover_img:
+                    st.image(new_cover_img, width=100, caption="표지 미리보기")
             with icol2:
                 new_bg_img = st.file_uploader("내지(배경) 이미지", type=['jpg','jpeg','png'], key="new_std_bg")
+                if new_bg_img:
+                    st.image(new_bg_img, width=100, caption="내지 미리보기")
             with icol3:
                 new_info_img = st.file_uploader("안내지 이미지", type=['jpg','jpeg','png'], key="new_std_info")
+                if new_info_img:
+                    st.image(new_info_img, width=100, caption="안내지 미리보기")
         
         st.markdown("---")
         
@@ -144,9 +150,9 @@ with tab1:
                         'margin_bottom': new_mb,
                         'margin_left': new_ml,
                         'margin_right': new_mr,
-                        'cover_image': new_cover_img.read() if new_cover_img else None,
-                        'bg_image': new_bg_img.read() if new_bg_img else None,
-                        'info_image': new_info_img.read() if new_info_img else None
+                        'cover_image': new_cover_img.getvalue() if new_cover_img else None,
+                        'bg_image': new_bg_img.getvalue() if new_bg_img else None,
+                        'info_image': new_info_img.getvalue() if new_info_img else None
                     }
                     st.session_state.std_products.append(new_product)
                     st.session_state.std_new_mode = False
@@ -227,16 +233,22 @@ with tab1:
                     icol1, icol2, icol3 = st.columns(3)
                     with icol1:
                         edit_cover_img = st.file_uploader("표지 이미지", type=['jpg','jpeg','png'], key="edit_std_cover")
-                        if product.get('cover_image'):
-                            st.caption("✅ 기존 이미지 있음")
+                        if edit_cover_img:
+                            st.image(edit_cover_img, width=100, caption="새 표지")
+                        elif product.get('cover_image'):
+                            st.image(product['cover_image'], width=100, caption="기존 표지")
                     with icol2:
                         edit_bg_img = st.file_uploader("내지(배경) 이미지", type=['jpg','jpeg','png'], key="edit_std_bg")
-                        if product.get('bg_image'):
-                            st.caption("✅ 기존 이미지 있음")
+                        if edit_bg_img:
+                            st.image(edit_bg_img, width=100, caption="새 내지")
+                        elif product.get('bg_image'):
+                            st.image(product['bg_image'], width=100, caption="기존 내지")
                     with icol3:
                         edit_info_img = st.file_uploader("안내지 이미지", type=['jpg','jpeg','png'], key="edit_std_info")
-                        if product.get('info_image'):
-                            st.caption("✅ 기존 이미지 있음")
+                        if edit_info_img:
+                            st.image(edit_info_img, width=100, caption="새 안내지")
+                        elif product.get('info_image'):
+                            st.image(product['info_image'], width=100, caption="기존 안내지")
                 
                 st.markdown("---")
                 
@@ -261,11 +273,11 @@ with tab1:
                         
                         # 이미지 업데이트 (새로 업로드한 경우만)
                         if edit_cover_img:
-                            product['cover_image'] = edit_cover_img.read()
+                            product['cover_image'] = edit_cover_img.getvalue()
                         if edit_bg_img:
-                            product['bg_image'] = edit_bg_img.read()
+                            product['bg_image'] = edit_bg_img.getvalue()
                         if edit_info_img:
-                            product['info_image'] = edit_info_img.read()
+                            product['info_image'] = edit_info_img.getvalue()
                         
                         st.session_state.std_edit_mode = False
                         st.toast("✅ 수정되었습니다!")
@@ -454,36 +466,33 @@ with tab2:
     
     # ===== 고객 목록 & 체크박스 =====
     if st.session_state.std_customers:
-        st.markdown("### 👥 고객 목록")
+        total_count = len(st.session_state.std_customers)
+        selected_count = len(st.session_state.std_selected_customers)
+        st.markdown(f"### 👥 고객 목록 ({selected_count}/{total_count}명 선택)")
         
         col_all, col_reset = st.columns([1, 1])
         with col_all:
-            # 전체선택 체크박스
-            select_all = st.checkbox(
-                "✅ 전체 선택", 
-                value=st.session_state.std_select_all,
-                key=f"std_select_all_chk_{st.session_state.std_reset_counter}"
-            )
-            
-            # 전체선택 상태가 바뀌면 반영
-            if select_all != st.session_state.std_select_all:
-                st.session_state.std_select_all = select_all
-                if select_all:
-                    st.session_state.std_selected_customers = set(range(len(st.session_state.std_customers)))
-                else:
-                    st.session_state.std_selected_customers = set()
+            # 전체선택 버튼 (체크박스 대신)
+            if st.button("✅ 전체 선택", use_container_width=True):
+                st.session_state.std_selected_customers = set(range(len(st.session_state.std_customers)))
                 st.rerun()
                 
         with col_reset:
-            if st.button("🔄 초기화", use_container_width=True):
-                st.session_state.std_customers = []
-                st.session_state.std_selected_customers = set()
-                st.session_state.std_progress = {}
-                st.session_state.std_completed = set()
-                st.session_state.std_select_all = False
-                st.session_state.std_reset_counter += 1  # 파일 업로더 리셋
-                st.toast("🔄 초기화되었습니다!")
-                st.rerun()
+            col_deselect, col_init = st.columns(2)
+            with col_deselect:
+                if st.button("⬜ 전체 해제", use_container_width=True):
+                    st.session_state.std_selected_customers = set()
+                    st.rerun()
+            with col_init:
+                if st.button("🔄 초기화", use_container_width=True):
+                    st.session_state.std_customers = []
+                    st.session_state.std_selected_customers = set()
+                    st.session_state.std_progress = {}
+                    st.session_state.std_completed = set()
+                    st.session_state.std_select_all = False
+                    st.session_state.std_reset_counter += 1
+                    st.toast("🔄 초기화되었습니다!")
+                    st.rerun()
         
         st.markdown("---")
         
@@ -493,10 +502,21 @@ with tab2:
             
             with col_check:
                 is_checked = idx in st.session_state.std_selected_customers
-                if st.checkbox("", value=is_checked, key=f"std_chk_{idx}_{st.session_state.std_reset_counter}", label_visibility="collapsed"):
-                    st.session_state.std_selected_customers.add(idx)
-                else:
-                    st.session_state.std_selected_customers.discard(idx)
+                # on_change 콜백 사용
+                def toggle_customer(customer_idx):
+                    if customer_idx in st.session_state.std_selected_customers:
+                        st.session_state.std_selected_customers.discard(customer_idx)
+                    else:
+                        st.session_state.std_selected_customers.add(customer_idx)
+                
+                st.checkbox(
+                    "", 
+                    value=is_checked, 
+                    key=f"std_chk_{idx}_{st.session_state.std_reset_counter}",
+                    label_visibility="collapsed",
+                    on_change=toggle_customer,
+                    args=(idx,)
+                )
             
             with col_name:
                 name = customer.get('이름', customer.get('고객명', f'고객{idx+1}'))
