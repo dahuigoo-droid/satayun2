@@ -16,6 +16,7 @@ st.set_page_config(
 from common import apply_common_css, init_session_state, initialize_database
 from auth import login_user, register_user, check_admin_exists, create_first_admin
 from database import SessionLocal
+from sqlalchemy import text
 
 # DB 초기화
 initialize_database()
@@ -32,13 +33,13 @@ def get_all_tasks():
     """모든 업무현황 조회"""
     try:
         db = SessionLocal()
-        result = db.execute("""
+        result = db.execute(text("""
             SELECT t.*, u.name as author_name 
             FROM tasks t 
             LEFT JOIN users u ON t.author_id = u.id 
             WHERE t.is_active = TRUE
             ORDER BY t.created_at DESC
-        """)
+        """))
         tasks = [dict(row._mapping) for row in result]
         db.close()
         return tasks
@@ -50,10 +51,10 @@ def create_task(author_id: int, title: str, content: str, status: str = "진행�
     """업무현황 등록"""
     try:
         db = SessionLocal()
-        db.execute("""
+        db.execute(text("""
             INSERT INTO tasks (author_id, title, content, status, is_active, created_at, updated_at)
             VALUES (:author_id, :title, :content, :status, TRUE, NOW(), NOW())
-        """, {"author_id": author_id, "title": title, "content": content, "status": status})
+        """), {"author_id": author_id, "title": title, "content": content, "status": status})
         db.commit()
         db.close()
         return {"success": True}
@@ -80,7 +81,7 @@ def update_task(task_id: int, title: str = None, content: str = None, status: st
         updates.append("updated_at = NOW()")
         
         query = f"UPDATE tasks SET {', '.join(updates)} WHERE id = :task_id"
-        db.execute(query, params)
+        db.execute(text(query), params)
         db.commit()
         db.close()
         return {"success": True}
@@ -91,7 +92,7 @@ def delete_task(task_id: int):
     """업무현황 삭제 (soft delete)"""
     try:
         db = SessionLocal()
-        db.execute("UPDATE tasks SET is_active = FALSE WHERE id = :task_id", {"task_id": task_id})
+        db.execute(text("UPDATE tasks SET is_active = FALSE WHERE id = :task_id"), {"task_id": task_id})
         db.commit()
         db.close()
         return {"success": True}
