@@ -1,0 +1,34 @@
+[[pages]]
+path = "app.py"
+name = "업무현황"
+icon = "📋"
+
+[[pages]]
+path = "pages/1_공지사항.py"
+name = "공지사항"
+icon = "📢"
+
+[[pages]]
+path = "pages/2_자료실.py"
+name = "자료실"
+icon = "📚"
+
+[[pages]]
+path = "pages/3_기성상품등록.py"
+name = "기성상품등록"
+icon = "📦"
+
+[[pages]]
+path = "pages/4_서비스작업.py"
+name = "서비스작업"
+icon = "🔧"
+
+[[pages]]
+path = "pages/5_마이페이지.py"
+name = "마이페이지"
+icon = "👤"
+
+[[pages]]
+path = "pages/6_관리자설정.py"
+name = "관리자설정"
+icon = "⚙️"
