@@ -516,6 +516,12 @@ with tab2:
                 bg_img = next((t['image_path'] for t in templates if t['template_type'] == 'background'), None)
                 info_img = next((t['image_path'] for t in templates if t['template_type'] == 'info'), None)
                 
+                # 디버그 로그
+                print(f"[DEBUG] templates 개수: {len(templates)}")
+                print(f"[DEBUG] 표지: {cover_img}")
+                print(f"[DEBUG] 내지: {bg_img}")
+                print(f"[DEBUG] 안내지: {info_img}")
+                
                 bar = st.progress(0)
                 status = st.empty()
                 
