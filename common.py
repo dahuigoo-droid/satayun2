@@ -1,11 +1,48 @@
 # -*- coding: utf-8 -*-
 """
 🔮 공통 모듈 - CSS, 캐싱, 유틸리티 함수
+Supabase Storage 연동 버전
 """
 
 import streamlit as st
 import os
 from datetime import datetime
+
+# ============================================
+# Supabase Storage 설정
+# ============================================
+
+SUPABASE_URL = None
+SUPABASE_KEY = None
+supabase_client = None
+
+try:
+    SUPABASE_URL = st.secrets.get("SUPABASE_URL")
+    SUPABASE_KEY = st.secrets.get("SUPABASE_KEY")
+except:
+    pass
+
+if not SUPABASE_URL:
+    SUPABASE_URL = os.environ.get("SUPABASE_URL")
+if not SUPABASE_KEY:
+    SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+# Supabase 클라이언트 초기화
+@st.cache_resource
+def get_supabase_client():
+    """Supabase 클라이언트 캐싱"""
+    if SUPABASE_URL and SUPABASE_KEY:
+        try:
+            from supabase import create_client
+            return create_client(SUPABASE_URL, SUPABASE_KEY)
+        except Exception as e:
+            print(f"Supabase 연결 오류: {e}")
+    return None
+
+supabase_client = get_supabase_client()
+
+# 버킷 이름
+STORAGE_BUCKET = "satayun2"
 
 # ============================================
 # 임포트
@@ -196,10 +233,38 @@ def get_member_level() -> int:
     return st.session_state.user.get('member_level', 1)
 
 def save_uploaded_file(uploaded_file, prefix: str) -> str:
+    """파일 업로드 - Supabase Storage 사용 (폴백: 로컬 저장)"""
     if uploaded_file is None:
         return None
+    
+    # 파일명 생성
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    safe_name = uploaded_file.name.replace(" ", "_")
+    filename = f"{prefix}_{timestamp}_{safe_name}"
+    
+    # Supabase Storage에 업로드 시도
+    client = get_supabase_client()
+    if client:
+        try:
+            file_bytes = uploaded_file.getvalue()
+            
+            # 파일 업로드
+            result = client.storage.from_(STORAGE_BUCKET).upload(
+                path=filename,
+                file=file_bytes,
+                file_options={"content-type": uploaded_file.type}
+            )
+            
+            # Public URL 생성
+            public_url = client.storage.from_(STORAGE_BUCKET).get_public_url(filename)
+            return public_url
+            
+        except Exception as e:
+            print(f"Supabase 업로드 오류: {e}")
+            # 폴백: 로컬 저장
+    
+    # 폴백: 로컬 파일 시스템에 저장
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    filename = f"{prefix}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uploaded_file.name}"
     filepath = os.path.join(UPLOAD_DIR, filename)
     with open(filepath, "wb") as f:
         f.write(uploaded_file.getbuffer())
@@ -240,6 +305,37 @@ def calculate_chars_per_page(font_size_body: int, line_height: int, margin_top: 
     chars_per_line = int(usable_width / char_width_mm)
     chars_per_page = int(lines_per_page * chars_per_line * 0.8)
     return max(chars_per_page, 300)
+
+# ============================================
+# 이미지 URL 헬퍼 함수
+# ============================================
+
+def get_image_url(image_path: str) -> str:
+    """이미지 경로에서 표시 가능한 URL 반환"""
+    if not image_path:
+        return None
+    
+    # 이미 URL인 경우 (Supabase Storage)
+    if image_path.startswith("http"):
+        return image_path
+    
+    # 로컬 파일인 경우
+    if os.path.exists(image_path):
+        return image_path
+    
+    return None
+
+def is_valid_image(image_path: str) -> bool:
+    """이미지가 유효한지 확인"""
+    if not image_path:
+        return False
+    
+    # URL인 경우 유효하다고 가정
+    if image_path.startswith("http"):
+        return True
+    
+    # 로컬 파일 존재 여부 확인
+    return os.path.exists(image_path)
 
 # ============================================
 # 업무 자동화 콘솔 유틸리티
