@@ -7,6 +7,7 @@
 
 import streamlit as st
 import time
+import io
 from datetime import date
 
 st.set_page_config(page_title="개별제품", page_icon="🎯", layout="wide")
@@ -16,13 +17,15 @@ from common import (
     is_admin, FONT_OPTIONS, clear_service_cache, save_uploaded_file
 )
 from services import (
-    get_services_by_category, add_service, update_service, delete_service
+    get_services_by_category, add_service, update_service, delete_service,
+    get_system_config, ConfigKeys
 )
 from contents import (
     get_chapters_by_service, add_chapter, add_chapters_bulk, delete_chapters_by_service,
     get_guidelines_by_service, add_guideline, update_guideline, delete_guideline,
     get_templates_by_service, add_template, delete_template
 )
+from pdf_generator import generate_full_content, PDFGenerator
 
 # 초기화
 init_session_state()
@@ -54,6 +57,8 @@ if f'{PREFIX}_completed' not in st.session_state:
     st.session_state[f'{PREFIX}_completed'] = set()
 if f'{PREFIX}_reset' not in st.session_state:
     st.session_state[f'{PREFIX}_reset'] = 0
+if f'{PREFIX}_pdfs' not in st.session_state:
+    st.session_state[f'{PREFIX}_pdfs'] = {}
 
 PRODUCT_TYPE = "개별상품"
 
@@ -432,7 +437,7 @@ with tab2:
         st.markdown("---")
         
         for idx, cust in enumerate(customers):
-            col_chk, col_name, col_info, col_prog = st.columns([0.5, 1.5, 2, 1.5])
+            col_chk, col_name, col_info, col_prog, col_dl = st.columns([0.5, 1.5, 2, 1, 0.5])
             
             with col_chk:
                 checked = idx in st.session_state[f'{PREFIX}_selected']
@@ -456,8 +461,18 @@ with tab2:
             with col_prog:
                 prog = st.session_state[f'{PREFIX}_progress'].get(idx, 0)
                 st.progress(prog / 100)
+            
+            with col_dl:
                 if idx in st.session_state[f'{PREFIX}_completed']:
-                    st.caption("✅")
+                    pdfs = st.session_state.get(f'{PREFIX}_pdfs', {})
+                    if idx in pdfs:
+                        st.download_button(
+                            "📥",
+                            data=pdfs[idx]['pdf'],
+                            file_name=f"{pdfs[idx]['name']}_{selected_product['name']}.pdf",
+                            mime="application/pdf",
+                            key=f"dl_{idx}"
+                        )
         
         st.markdown("---")
         
@@ -465,22 +480,87 @@ with tab2:
         selected_count = len(st.session_state[f'{PREFIX}_selected'])
         if selected_count > 0:
             if st.button(f"🚀 PDF 생성 ({selected_count}명)", type="primary", use_container_width=True):
+                # API 키 확인
+                api_key = get_system_config(ConfigKeys.ADMIN_API_KEY, "")
+                if not api_key:
+                    st.error("⚠️ API 키가 설정되지 않았습니다. 관리자설정에서 API 키를 입력하세요.")
+                    st.stop()
+                
+                # 상품 정보 가져오기
+                chapters = get_chapters_by_service(selected_product['id'])
+                guidelines = get_guidelines_by_service(selected_product['id'])
+                templates = get_templates_by_service(selected_product['id'])
+                
+                if not chapters:
+                    st.error("⚠️ 목차가 없습니다. 상품 설정에서 목차를 추가하세요.")
+                    st.stop()
+                
+                chapter_titles = [c['title'] for c in chapters]
+                guideline_text = guidelines[0]['content'] if guidelines else ""
+                
+                # 템플릿 이미지 경로
+                cover_img = next((t['image_path'] for t in templates if t['template_type'] == 'cover'), None)
+                bg_img = next((t['image_path'] for t in templates if t['template_type'] == 'background'), None)
+                info_img = next((t['image_path'] for t in templates if t['template_type'] == 'info'), None)
+                
                 bar = st.progress(0)
                 status = st.empty()
                 
+                # PDF 생성기 초기화
+                pdf_gen = PDFGenerator(
+                    font_name=selected_product.get('font_family', 'NanumGothic'),
+                    font_size=selected_product.get('font_size_body', 12),
+                    line_height=int(selected_product.get('line_height', 180) / 10),
+                    letter_spacing=selected_product.get('letter_spacing', 0)
+                )
+                
+                generated_pdfs = {}
+                
                 for i, idx in enumerate(st.session_state[f'{PREFIX}_selected']):
                     cust = customers[idx]
-                    status.text(f"⏳ {cust['이름']}님 생성 중... ({i+1}/{selected_count})")
+                    name = cust.get('이름', f'고객{idx+1}')
+                    status.text(f"⏳ {name}님 콘텐츠 생성 중... ({i+1}/{selected_count})")
                     
-                    for step in [20, 40, 60, 80, 100]:
-                        st.session_state[f'{PREFIX}_progress'][idx] = step
-                        bar.progress((i + step/100) / selected_count)
-                        time.sleep(0.1)
+                    # GPT로 콘텐츠 생성
+                    def progress_cb(prog, msg):
+                        st.session_state[f'{PREFIX}_progress'][idx] = int(prog * 80)
+                        bar.progress((i + prog * 0.8) / selected_count)
                     
+                    contents = generate_full_content(
+                        api_key=api_key,
+                        customer_info=cust,
+                        chapters=chapter_titles,
+                        guideline=guideline_text,
+                        service_type=selected_product['name'],
+                        progress_callback=progress_cb
+                    )
+                    
+                    status.text(f"📄 {name}님 PDF 생성 중... ({i+1}/{selected_count})")
+                    
+                    # PDF 생성
+                    pdf_bytes = pdf_gen.create_pdf(
+                        chapters_content=contents,
+                        customer_name=name,
+                        service_type=selected_product['name'],
+                        cover_image=cover_img,
+                        background_image=bg_img,
+                        info_image=info_img
+                    )
+                    
+                    generated_pdfs[idx] = {
+                        'name': name,
+                        'pdf': pdf_bytes
+                    }
+                    
+                    st.session_state[f'{PREFIX}_progress'][idx] = 100
                     st.session_state[f'{PREFIX}_completed'].add(idx)
+                    bar.progress((i + 1) / selected_count)
+                
+                # 생성된 PDF를 세션에 저장
+                st.session_state[f'{PREFIX}_pdfs'] = generated_pdfs
                 
                 bar.progress(1.0)
-                status.text(f"✅ {selected_count}명 완료!")
+                status.text(f"✅ {selected_count}명 PDF 생성 완료!")
                 st.balloons()
                 st.rerun()
         else:
