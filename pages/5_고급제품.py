@@ -496,12 +496,20 @@ with tab2:
                 bar = st.progress(0)
                 status = st.empty()
                 
-                # PDF 생성기 초기화
+                # PDF 생성기 초기화 (모든 디자인 설정 반영)
                 pdf_gen = PDFGenerator(
                     font_name=selected_product.get('font_family', 'NanumGothic'),
-                    font_size=selected_product.get('font_size_body', 12),
-                    line_height=int(selected_product.get('line_height', 180) / 10),
-                    letter_spacing=selected_product.get('letter_spacing', 0)
+                    font_size_title=selected_product.get('font_size_title', 24),
+                    font_size_subtitle=selected_product.get('font_size_subtitle', 16),
+                    font_size_body=selected_product.get('font_size_body', 12),
+                    line_height=selected_product.get('line_height', 180),
+                    letter_spacing=selected_product.get('letter_spacing', 0),
+                    char_width=selected_product.get('char_width', 100),
+                    margin_top=selected_product.get('margin_top', 25),
+                    margin_bottom=selected_product.get('margin_bottom', 25),
+                    margin_left=selected_product.get('margin_left', 25),
+                    margin_right=selected_product.get('margin_right', 25),
+                    target_pages=selected_product.get('target_pages', 30)
                 )
                 
                 generated_pdfs = {}
