@@ -37,6 +37,61 @@ from pdf_utils import (
 from notification import send_email_with_attachment
 
 # ============================================
+# 상품 수정 폼 함수
+# ============================================
+
+def show_service_edit_form(service, prefix):
+    """기존 상품 수정 폼"""
+    svc_id = service['id']
+    
+    # 현재 데이터 로드
+    chapters = cached_get_chapters(svc_id)
+    guidelines = cached_get_guidelines(svc_id)
+    templates = cached_get_templates(svc_id)
+    
+    # 상품명 수정
+    new_name = st.text_input("상품명", value=service['name'], key=f"{prefix}_edit_name_{svc_id}")
+    
+    # 목차 수정
+    chapter_text = "\n".join([ch['title'] for ch in chapters])
+    new_chapters = st.text_area("목차 (줄바꿈 구분)", value=chapter_text, height=150, key=f"{prefix}_edit_ch_{svc_id}")
+    
+    # 지침 수정
+    guideline_text = guidelines[0]['content'] if guidelines else ""
+    new_guideline = st.text_area("AI 지침", value=guideline_text, height=150, key=f"{prefix}_edit_guide_{svc_id}")
+    
+    # 저장 버튼
+    col_save, col_delete = st.columns(2)
+    with col_save:
+        if st.button("💾 수정 저장", key=f"{prefix}_save_{svc_id}", type="primary", use_container_width=True):
+            # 상품명 업데이트
+            if new_name != service['name']:
+                update_service(svc_id, name=new_name)
+            
+            # 목차 업데이트
+            new_chapter_list = [ch.strip() for ch in new_chapters.strip().split("\n") if ch.strip()]
+            delete_chapters_by_service(svc_id)
+            add_chapters_bulk(svc_id, new_chapter_list)
+            
+            # 지침 업데이트
+            if guidelines:
+                update_guideline(guidelines[0]['id'], content=new_guideline)
+            elif new_guideline:
+                add_guideline(svc_id, f"{new_name} 지침", new_guideline)
+            
+            clear_service_cache()
+            st.success("✅ 수정 완료!")
+            st.rerun()
+    
+    with col_delete:
+        if st.button("🗑️ 상품 삭제", key=f"{prefix}_del_{svc_id}", type="secondary", use_container_width=True):
+            delete_service(svc_id)
+            clear_service_cache()
+            st.session_state.selected_individual_service = None
+            st.warning("🗑️ 삭제됨")
+            st.rerun()
+
+# ============================================
 # 초기화
 # ============================================
 
