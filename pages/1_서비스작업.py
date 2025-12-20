@@ -37,7 +37,7 @@ from pdf_utils import (
 from notification import send_email_with_attachment
 
 # ============================================
-# 상품 수정 폼 함수
+# 상품 수정 폼 함수 (v1 스타일)
 # ============================================
 
 def show_service_edit_form(service, prefix):
@@ -48,8 +48,10 @@ def show_service_edit_form(service, prefix):
     guidelines = cached_get_guidelines(svc_id)
     templates = cached_get_templates(svc_id)
     
+    # 상품명
     new_name = st.text_input("상품명", value=service.get('name', ''), key=f"{prefix}_edit_name_{svc_id}")
     
+    # 목차 & 지침 (2컬럼)
     col_left, col_right = st.columns(2)
     with col_left:
         st.markdown("**📑 목차**")
@@ -61,72 +63,135 @@ def show_service_edit_form(service, prefix):
         guideline_text = guidelines[0].get('content', '') if guidelines else ""
         new_guideline = st.text_area("지침", value=guideline_text, height=250, key=f"{prefix}_edit_guide_{svc_id}", label_visibility="collapsed")
     
+    # 폰트/디자인 설정 (v1 스타일)
     with st.expander("⚙️ 폰트/디자인 설정", expanded=False):
+        
+        # ===== 목표 페이지 수 =====
         st.markdown("**📄 목표 페이지 수**")
         col_page, col_info = st.columns([1, 2])
         with col_page:
-            target_pages = st.number_input("목표 페이지", value=service.get('target_pages', 30), min_value=5, max_value=100, key=f"{prefix}_pages_{svc_id}")
+            target_pages = st.number_input("목표 페이지", value=service.get('target_pages', 35), min_value=5, max_value=100, key=f"{prefix}_pages_{svc_id}", label_visibility="collapsed")
         with col_info:
             chars_per_page = 840
             total_chars = chars_per_page * target_pages
             st.success(f"📊 현재 설정: 페이지당 약 {chars_per_page}자 | 총 {total_chars:,}자 예상")
         
+        # ===== 폰트 설정 =====
         st.markdown("**🔤 폰트 설정**")
-        font_cols = st.columns(4)
-        with font_cols[0]:
-            font_family = st.selectbox("폰트", list(FONT_OPTIONS.keys()), index=0, key=f"{prefix}_font_{svc_id}")
-        with font_cols[1]:
-            font_size_body = st.number_input("본문 크기", value=service.get('font_size_body', 12), min_value=8, max_value=24, key=f"{prefix}_fontsize_{svc_id}")
-        with font_cols[2]:
-            line_height = st.number_input("줄간격(%)", value=service.get('line_height', 180), min_value=100, max_value=300, key=f"{prefix}_lineheight_{svc_id}")
-        with font_cols[3]:
-            letter_spacing = st.number_input("자간", value=service.get('letter_spacing', 0), min_value=-5, max_value=10, key=f"{prefix}_letterspacing_{svc_id}")
         
+        # 1행: 폰트, 행간, 자간
+        font_row1 = st.columns([2, 2, 2])
+        with font_row1[0]:
+            st.caption("폰트")
+            font_family = st.selectbox("폰트", list(FONT_OPTIONS.keys()), index=0, key=f"{prefix}_font_{svc_id}", label_visibility="collapsed")
+        with font_row1[1]:
+            st.caption("행간 (%)")
+            line_height = st.slider("행간", min_value=100, max_value=300, value=service.get('line_height', 180), key=f"{prefix}_lineheight_{svc_id}", label_visibility="collapsed")
+        with font_row1[2]:
+            st.caption("자간 (%)")
+            letter_spacing = st.slider("자간", min_value=-5, max_value=10, value=service.get('letter_spacing', 0), key=f"{prefix}_letterspacing_{svc_id}", label_visibility="collapsed")
+        
+        # 2행: 대제목, 소제목, 본문, 장평
+        font_row2 = st.columns(4)
+        with font_row2[0]:
+            st.caption("대제목")
+            font_size_title = st.number_input("대제목", value=service.get('font_size_title', 30), min_value=12, max_value=48, key=f"{prefix}_title_{svc_id}", label_visibility="collapsed")
+        with font_row2[1]:
+            st.caption("소제목")
+            font_size_subtitle = st.number_input("소제목", value=service.get('font_size_subtitle', 23), min_value=10, max_value=36, key=f"{prefix}_subtitle_{svc_id}", label_visibility="collapsed")
+        with font_row2[2]:
+            st.caption("본문")
+            font_size_body = st.number_input("본문", value=service.get('font_size_body', 18), min_value=8, max_value=24, key=f"{prefix}_fontsize_{svc_id}", label_visibility="collapsed")
+        with font_row2[3]:
+            st.caption("장평 (%)")
+            char_width = st.slider("장평", min_value=50, max_value=150, value=service.get('char_width', 100), key=f"{prefix}_charwidth_{svc_id}", label_visibility="collapsed")
+        
+        # ===== 여백 설정 =====
         st.markdown("**📐 여백 설정 (mm)**")
         margin_cols = st.columns(4)
         with margin_cols[0]:
-            margin_top = st.number_input("상단", value=service.get('margin_top', 25), min_value=10, max_value=50, key=f"{prefix}_mt_{svc_id}")
+            st.caption("상단")
+            margin_top = st.number_input("상단", value=service.get('margin_top', 25), min_value=10, max_value=50, key=f"{prefix}_mt_{svc_id}", label_visibility="collapsed")
         with margin_cols[1]:
-            margin_bottom = st.number_input("하단", value=service.get('margin_bottom', 25), min_value=10, max_value=50, key=f"{prefix}_mb_{svc_id}")
+            st.caption("하단")
+            margin_bottom = st.number_input("하단", value=service.get('margin_bottom', 25), min_value=10, max_value=50, key=f"{prefix}_mb_{svc_id}", label_visibility="collapsed")
         with margin_cols[2]:
-            margin_left = st.number_input("좌측", value=service.get('margin_left', 25), min_value=10, max_value=50, key=f"{prefix}_ml_{svc_id}")
+            st.caption("좌측")
+            margin_left = st.number_input("좌측", value=service.get('margin_left', 25), min_value=10, max_value=50, key=f"{prefix}_ml_{svc_id}", label_visibility="collapsed")
         with margin_cols[3]:
-            margin_right = st.number_input("우측", value=service.get('margin_right', 25), min_value=10, max_value=50, key=f"{prefix}_mr_{svc_id}")
+            st.caption("우측")
+            margin_right = st.number_input("우측", value=service.get('margin_right', 25), min_value=10, max_value=50, key=f"{prefix}_mr_{svc_id}", label_visibility="collapsed")
         
-        st.markdown("**🖼️ 디자인 이미지**")
+        # ===== 디자인 이미지 =====
+        st.markdown("**🖼️ 디자인**")
         design_cols = st.columns(3)
         with design_cols[0]:
             st.caption("📕 표지")
-            cover_tpl = next((t for t in templates if t.get('type') == 'cover'), None) if templates else None
-            if cover_tpl and cover_tpl.get('image_url'):
-                st.image(cover_tpl['image_url'], width=100)
+            cover_tpl = next((t for t in templates if t.get('template_type') == 'cover'), None) if templates else None
+            if cover_tpl and cover_tpl.get('image_path'):
+                st.image(cover_tpl['image_path'], width=100)
             new_cover = st.file_uploader("표지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_cover_{svc_id}", label_visibility="collapsed")
         with design_cols[1]:
             st.caption("📄 내지")
-            bg_tpl = next((t for t in templates if t.get('type') == 'background'), None) if templates else None
-            if bg_tpl and bg_tpl.get('image_url'):
-                st.image(bg_tpl['image_url'], width=100)
+            bg_tpl = next((t for t in templates if t.get('template_type') == 'background'), None) if templates else None
+            if bg_tpl and bg_tpl.get('image_path'):
+                st.image(bg_tpl['image_path'], width=100)
             new_bg = st.file_uploader("내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_bg_{svc_id}", label_visibility="collapsed")
         with design_cols[2]:
             st.caption("📋 안내지")
-            info_tpl = next((t for t in templates if t.get('type') == 'info'), None) if templates else None
-            if info_tpl and info_tpl.get('image_url'):
-                st.image(info_tpl['image_url'], width=100)
+            info_tpl = next((t for t in templates if t.get('template_type') == 'info'), None) if templates else None
+            if info_tpl and info_tpl.get('image_path'):
+                st.image(info_tpl['image_path'], width=100)
             new_info = st.file_uploader("안내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_info_{svc_id}", label_visibility="collapsed")
     
     st.markdown("---")
     
+    # 저장/삭제 버튼
     col_save, col_delete = st.columns(2)
     with col_save:
         if st.button("💾 수정 저장", key=f"{prefix}_save_{svc_id}", type="primary", use_container_width=True):
-            update_service(svc_id, name=new_name, target_pages=target_pages)
+            # 상품 업데이트 (모든 폰트 설정 포함)
+            update_service(svc_id, 
+                name=new_name,
+                font_family=font_family,
+                font_size_title=font_size_title,
+                font_size_subtitle=font_size_subtitle,
+                font_size_body=font_size_body,
+                line_height=line_height,
+                letter_spacing=letter_spacing,
+                char_width=char_width,
+                margin_top=margin_top,
+                margin_bottom=margin_bottom,
+                margin_left=margin_left,
+                margin_right=margin_right,
+                target_pages=target_pages
+            )
+            
+            # 목차 업데이트
             new_chapter_list = [ch.strip() for ch in new_chapters.strip().split("\n") if ch.strip()]
             delete_chapters_by_service(svc_id)
             add_chapters_bulk(svc_id, new_chapter_list)
+            
+            # 지침 업데이트
             if guidelines:
                 update_guideline(guidelines[0]['id'], content=new_guideline)
             elif new_guideline:
                 add_guideline(svc_id, f"{new_name} 지침", new_guideline)
+            
+            # 이미지 업데이트
+            if new_cover:
+                if cover_tpl:
+                    delete_template(cover_tpl['id'])
+                add_template(svc_id, "cover", "표지", save_uploaded_file(new_cover, f"{new_name}_cover"))
+            if new_bg:
+                if bg_tpl:
+                    delete_template(bg_tpl['id'])
+                add_template(svc_id, "background", "내지", save_uploaded_file(new_bg, f"{new_name}_bg"))
+            if new_info:
+                if info_tpl:
+                    delete_template(info_tpl['id'])
+                add_template(svc_id, "info", "안내지", save_uploaded_file(new_info, f"{new_name}_info"))
+            
             clear_service_cache()
             st.success("✅ 수정 완료!")
             st.rerun()
@@ -269,16 +334,71 @@ elif "개별상품" in product_type:
                                        placeholder="고객 정보를 바탕으로 긍정적인 톤으로 작성...")
             
             with st.expander("⚙️ 폰트/디자인 설정", expanded=False):
-                font_settings = render_font_settings("new_my")
+                # 목표 페이지 수
+                st.markdown("**📄 목표 페이지 수**")
+                col_page, col_info = st.columns([1, 2])
+                with col_page:
+                    new_target_pages = st.number_input("목표 페이지", value=35, min_value=5, max_value=100, key="new_my_pages", label_visibility="collapsed")
+                with col_info:
+                    chars_per_page = 840
+                    total_chars = chars_per_page * new_target_pages
+                    st.success(f"📊 현재 설정: 페이지당 약 {chars_per_page}자 | 총 {total_chars:,}자 예상")
                 
+                # 폰트 설정
+                st.markdown("**🔤 폰트 설정**")
+                font_row1 = st.columns([2, 2, 2])
+                with font_row1[0]:
+                    st.caption("폰트")
+                    new_font_family = st.selectbox("폰트", list(FONT_OPTIONS.keys()), index=0, key="new_my_font", label_visibility="collapsed")
+                with font_row1[1]:
+                    st.caption("행간 (%)")
+                    new_line_height = st.slider("행간", min_value=100, max_value=300, value=180, key="new_my_lineheight", label_visibility="collapsed")
+                with font_row1[2]:
+                    st.caption("자간 (%)")
+                    new_letter_spacing = st.slider("자간", min_value=-5, max_value=10, value=0, key="new_my_letterspacing", label_visibility="collapsed")
+                
+                font_row2 = st.columns(4)
+                with font_row2[0]:
+                    st.caption("대제목")
+                    new_font_size_title = st.number_input("대제목", value=30, min_value=12, max_value=48, key="new_my_title", label_visibility="collapsed")
+                with font_row2[1]:
+                    st.caption("소제목")
+                    new_font_size_subtitle = st.number_input("소제목", value=23, min_value=10, max_value=36, key="new_my_subtitle", label_visibility="collapsed")
+                with font_row2[2]:
+                    st.caption("본문")
+                    new_font_size_body = st.number_input("본문", value=18, min_value=8, max_value=24, key="new_my_fontsize", label_visibility="collapsed")
+                with font_row2[3]:
+                    st.caption("장평 (%)")
+                    new_char_width = st.slider("장평", min_value=50, max_value=150, value=100, key="new_my_charwidth", label_visibility="collapsed")
+                
+                # 여백 설정
+                st.markdown("**📐 여백 설정 (mm)**")
+                margin_cols = st.columns(4)
+                with margin_cols[0]:
+                    st.caption("상단")
+                    new_margin_top = st.number_input("상단", value=25, min_value=10, max_value=50, key="new_my_mt", label_visibility="collapsed")
+                with margin_cols[1]:
+                    st.caption("하단")
+                    new_margin_bottom = st.number_input("하단", value=25, min_value=10, max_value=50, key="new_my_mb", label_visibility="collapsed")
+                with margin_cols[2]:
+                    st.caption("좌측")
+                    new_margin_left = st.number_input("좌측", value=25, min_value=10, max_value=50, key="new_my_ml", label_visibility="collapsed")
+                with margin_cols[3]:
+                    st.caption("우측")
+                    new_margin_right = st.number_input("우측", value=25, min_value=10, max_value=50, key="new_my_mr", label_visibility="collapsed")
+                
+                # 디자인
                 st.markdown("**🖼️ 디자인**")
                 d_cols = st.columns(3)
                 with d_cols[0]:
-                    my_cover = st.file_uploader("📕 표지", type=["jpg","jpeg","png"], key="my_cover")
+                    st.caption("📕 표지")
+                    my_cover = st.file_uploader("표지", type=["jpg","jpeg","png"], key="my_cover", label_visibility="collapsed")
                 with d_cols[1]:
-                    my_bg = st.file_uploader("📄 내지", type=["jpg","jpeg","png"], key="my_bg")
+                    st.caption("📄 내지")
+                    my_bg = st.file_uploader("내지", type=["jpg","jpeg","png"], key="my_bg", label_visibility="collapsed")
                 with d_cols[2]:
-                    my_info = st.file_uploader("📋 안내지", type=["jpg","jpeg","png"], key="my_info")
+                    st.caption("📋 안내지")
+                    my_info = st.file_uploader("안내지", type=["jpg","jpeg","png"], key="my_info", label_visibility="collapsed")
             
             st.markdown("---")
             
@@ -288,31 +408,34 @@ elif "개별상품" in product_type:
             if can_save:
                 if st.button("💾 상품 저장", type="primary", use_container_width=True):
                     with st.spinner("저장 중..."):
-                        my_chapters = st.session_state.get('my_ch', '')
-                        my_guide = st.session_state.get('my_g', '')
+                        my_chapters_text = st.session_state.get('my_ch', '')
+                        my_guide_text = st.session_state.get('my_g', '')
                         
-                        # font_settings를 session_state에서 가져오기
-                        settings_key = "new_my_font_settings"
-                        font_settings = st.session_state.get(settings_key, {
-                            "font_family": "NanumGothic", "font_size_title": 24, "font_size_subtitle": 16,
-                            "font_size_body": 12, "letter_spacing": 0, "line_height": 180, "char_width": 100,
-                            "margin_top": 25, "margin_bottom": 25, "margin_left": 25, "margin_right": 25,
-                            "target_pages": 30
-                        })
+                        # 폰트 설정 수집
+                        font_settings = {
+                            "font_family": st.session_state.get('new_my_font', 'NanumGothic'),
+                            "font_size_title": st.session_state.get('new_my_title', 30),
+                            "font_size_subtitle": st.session_state.get('new_my_subtitle', 23),
+                            "font_size_body": st.session_state.get('new_my_fontsize', 18),
+                            "letter_spacing": st.session_state.get('new_my_letterspacing', 0),
+                            "line_height": st.session_state.get('new_my_lineheight', 180),
+                            "char_width": st.session_state.get('new_my_charwidth', 100),
+                            "margin_top": st.session_state.get('new_my_mt', 25),
+                            "margin_bottom": st.session_state.get('new_my_mb', 25),
+                            "margin_left": st.session_state.get('new_my_ml', 25),
+                            "margin_right": st.session_state.get('new_my_mr', 25),
+                            "target_pages": st.session_state.get('new_my_pages', 35)
+                        }
                         
                         result = add_service(my_name, "", user['id'], **font_settings)
                         if result.get("success"):
                             svc_id = result["id"]
-                            chapter_list = [ch.strip() for ch in my_chapters.strip().split("\n") if ch.strip()]
+                            chapter_list = [ch.strip() for ch in my_chapters_text.strip().split("\n") if ch.strip()]
                             add_chapters_bulk(svc_id, chapter_list)
-                            if my_guide:
-                                add_guideline(svc_id, f"{my_name} 지침", my_guide)
+                            if my_guide_text:
+                                add_guideline(svc_id, f"{my_name} 지침", my_guide_text)
                             
                             # 이미지 업로드 처리
-                            my_cover = st.session_state.get('my_cover')
-                            my_bg = st.session_state.get('my_bg')
-                            my_info = st.session_state.get('my_info')
-                            
                             if my_cover:
                                 add_template(svc_id, "cover", "표지", save_uploaded_file(my_cover, f"{my_name}_cover"))
                             if my_bg:
@@ -384,7 +507,6 @@ if "엑셀" in input_method:
         if is_couple:
             st.info("💑 **2인용 (궁합/재회)** 데이터로 인식됨")
             svc_type = 'couple'
-            # 2인용 컬럼 찾기
             name1_col = None
             name2_col = None
             for col in ['고객1_이름', '고객1이름', 'name1', 'Name1']:
@@ -402,7 +524,6 @@ if "엑셀" in input_method:
         else:
             st.info("👤 **1인용** 데이터로 인식됨")
             svc_type = 'single'
-            # 1인용 컬럼 찾기
             name_col = None
             for col in ['이름', 'name', 'Name', '성명', '고객명']:
                 if col in df.columns:
@@ -413,13 +534,10 @@ if "엑셀" in input_method:
         
         st.markdown("---")
         
-        # ===== 업무 자동화 콘솔: 간소화된 UI =====
-        # 요약 정보만 표시 (개별 선택 제거)
         total_count = len(df)
         completed_count = len(st.session_state.get('completed_customers', {}))
         pending_count = total_count - completed_count
         
-        # 진행 상태 카드
         col_stat1, col_stat2, col_stat3 = st.columns(3)
         with col_stat1:
             st.metric("📊 전체", f"{total_count}건")
@@ -428,7 +546,6 @@ if "엑셀" in input_method:
         with col_stat3:
             st.metric("⏳ 대기", f"{pending_count}건", delta=f"-{completed_count}" if completed_count > 0 else None)
         
-        # 초기화 버튼만 (작은 크기)
         col_reset = st.columns([3, 1])
         with col_reset[1]:
             if st.button("🔄 초기화", use_container_width=True, disabled=st.session_state.get('work_processing', False)):
@@ -442,10 +559,8 @@ if "엑셀" in input_method:
         
         st.markdown("---")
         
-        # 결과 테이블 (간소화 - 완료/실패만 표시)
         if completed_count > 0 or st.session_state.get('work_errors'):
             with st.expander(f"📋 처리 결과 ({completed_count}건 완료)", expanded=False):
-                # 완료된 항목
                 for idx in st.session_state.get('completed_customers', {}):
                     if idx < len(df):
                         row = df.iloc[idx]
@@ -464,21 +579,17 @@ if "엑셀" in input_method:
                         if pdf_data:
                             col_dl.download_button("⬇️", pdf_data, filename, "application/pdf", key=f"dl_{idx}")
                 
-                # 실패한 항목 (강조 표시)
                 for err in st.session_state.get('work_errors', []):
                     render_error_card(err.get('name', '알 수 없음'), err.get('error', '오류 발생'))
         
         st.markdown("---")
         
-        # ===== 핵심 버튼 1개: 전체 생성 시작 =====
         is_processing = st.session_state.get('work_processing', False)
         
         if pending_count > 0:
-            # 예상 시간 안내
-            est_minutes = pending_count * 1  # 병렬 처리 후 약 1분/건
+            est_minutes = pending_count * 1
             st.caption(f"⏱️ 예상 소요 시간: 약 {est_minutes}분 ({pending_count}건 × 1분)")
             
-            # 전체 생성 버튼 (처리 중이면 비활성화)
             button_text = "⏳ 처리 중..." if is_processing else f"🚀 전체 {pending_count}건 생성 시작"
             
             if st.button(button_text, type="primary", use_container_width=True, disabled=is_processing):
@@ -486,10 +597,8 @@ if "엑셀" in input_method:
                 st.session_state.work_errors = []
                 st.session_state.work_start_time = time.time()
                 
-                # 전체 고객 자동 선택 (개별 선택 없음)
                 pending_indices = [i for i in range(len(df)) if i not in st.session_state.get('completed_customers', {})]
                 
-                # 진행 상태 영역
                 progress_container = st.container()
                 with progress_container:
                     status_area = st.empty()
@@ -499,7 +608,6 @@ if "엑셀" in input_method:
                 for i, idx in enumerate(pending_indices):
                     row = df.iloc[idx]
                     
-                    # 이름 결정
                     if is_couple:
                         cust_name1 = row.get(name1_col, "고객1") if name1_col else "고객1"
                         cust_name2 = row.get(name2_col, "고객2") if name2_col else "고객2"
@@ -511,12 +619,10 @@ if "엑셀" in input_method:
                         cover_name = f"{display_name}님"
                         current_svc_type = "single"
                     
-                    # 진행 상태 표시 (업무 자동화 콘솔 스타일)
                     with progress_card_area:
                         render_progress_card(i, len(pending_indices), display_name)
                     current_detail.caption(f"📝 {display_name} - GPT 생성 중...")
                     
-                    # 멱등성 체크
                     order_hash = generate_order_hash(row.to_dict(), selected_service['id'])
                     if is_already_generated(order_hash):
                         cached_pdf = st.session_state.get('pdf_hashes', {}).get(order_hash)
@@ -530,11 +636,9 @@ if "엑셀" in input_method:
                             continue
                     
                     try:
-                        # 서비스 설정
                         temp_service = selected_service.copy()
                         temp_service['service_type'] = current_svc_type
                         
-                        # PDF 생성 (진행률은 내부에서 처리)
                         current_progress_bar = st.empty()
                         pdf_bytes = generate_pdf_with_progress(
                             row.to_dict(), temp_service, api_key,
@@ -551,9 +655,7 @@ if "엑셀" in input_method:
                                 st.session_state.generated_pdfs = {}
                             st.session_state.generated_pdfs[idx] = pdf_bytes
                             mark_as_generated(order_hash, pdf_bytes)
-                            # 성공은 조용히 (토스트만)
                         else:
-                            # 실패 기록
                             if 'work_errors' not in st.session_state:
                                 st.session_state.work_errors = []
                             st.session_state.work_errors.append({
@@ -561,7 +663,6 @@ if "엑셀" in input_method:
                                 'error': 'PDF 생성 실패'
                             })
                     except Exception as e:
-                        # 실패 기록 (사용자 친화적 메시지)
                         if 'work_errors' not in st.session_state:
                             st.session_state.work_errors = []
                         st.session_state.work_errors.append({
@@ -569,14 +670,11 @@ if "엑셀" in input_method:
                             'error': str(e)
                         })
                 
-                # 완료 처리
                 st.session_state.work_processing = False
                 
-                # 결과 표시
                 with progress_card_area:
                     render_progress_card(len(pending_indices), len(pending_indices), "완료!")
                 
-                # 실패가 있으면 강조
                 if st.session_state.get('work_errors'):
                     status_area.error(f"⚠️ {len(st.session_state.work_errors)}건 처리 실패 - 아래 목록 확인")
                     for err in st.session_state.work_errors:
@@ -596,20 +694,16 @@ else:
     st.markdown("**👤 고객 정보 직접 입력** (최대 2명)")
     st.caption("💡 2명 입력 시 궁합/재회용 PDF 생성")
     
-    # 초기화 버튼
     col_reset = st.columns([3, 1])
     with col_reset[1]:
         if st.button("🔄 초기화", key="reset_manual", use_container_width=True):
-            # 모든 직접 입력 관련 세션 완전 삭제
             st.session_state.manual_completed = False
             st.session_state.manual_pdf = None
-            # 입력 폼 키들도 삭제
             keys_to_delete = [k for k in list(st.session_state.keys()) if k.startswith('manual_')]
             for k in keys_to_delete:
                 del st.session_state[k]
             st.rerun()
     
-    # 고객 수 선택
     num_customers = st.radio("고객 수", [1, 2], horizontal=True, key="num_cust",
                             help="2명 입력 시 궁합/재회 등 합산 PDF 1개 생성")
     
@@ -618,14 +712,12 @@ else:
     for i in range(num_customers):
         st.markdown(f"**고객 {i+1}**")
         
-        # 1행: 이름, 이메일
         row1 = st.columns(2)
         with row1[0]:
             name = st.text_input("이름", key=f"manual_name_{i}", placeholder="홍길동")
         with row1[1]:
             email = st.text_input("이메일", key=f"manual_email_{i}", placeholder="example@email.com")
         
-        # 2행: 생년월일, 음력/양력
         row2 = st.columns([2, 1])
         with row2[0]:
             birth_date = st.date_input("생년월일", key=f"manual_birth_{i}",
@@ -635,7 +727,6 @@ else:
         with row2[1]:
             calendar_type = st.radio("음력/양력", ["양력", "음력"], horizontal=True, key=f"manual_cal_{i}")
         
-        # 3행: 태어난 시간
         row3 = st.columns([1, 1, 1])
         with row3[0]:
             birth_hour = st.selectbox("시", list(range(1, 13)), index=8, key=f"manual_hour_{i}")
@@ -645,7 +736,6 @@ else:
             ampm = st.radio("오전/오후", ["오전", "오후"], horizontal=True, key=f"manual_ampm_{i}")
         
         if name:
-            # 시간 포맷팅
             birth_date_str = birth_date.strftime("%Y-%m-%d")
             birth_time_str = f"{ampm} {birth_hour}시 {birth_min:02d}분"
             
@@ -660,28 +750,24 @@ else:
         if i < num_customers - 1:
             st.markdown("---")
     
-    # 세션 초기화
     if 'manual_completed' not in st.session_state:
         st.session_state.manual_completed = False
     if 'manual_pdf' not in st.session_state:
         st.session_state.manual_pdf = None
     
-    # 필수 입력 확인
     required_count = num_customers
     has_all_names = len(manual_customers) == required_count
     
     if has_all_names:
         st.markdown("---")
         
-        # 1명 또는 2명에 따른 표시
         if num_customers == 1:
             display_name = manual_customers[0]['이름']
-            cover_name = f"{display_name}님"  # 표지용: "홍길동님"
+            cover_name = f"{display_name}님"
             combined_data = manual_customers[0]
         else:
-            # 2명: 궁합/재회용 - 데이터 합치기
             display_name = f"{manual_customers[0]['이름']} & {manual_customers[1]['이름']}"
-            cover_name = f"{manual_customers[0]['이름']}님 & {manual_customers[1]['이름']}님"  # 표지용: "홍길동님 & 김철수님"
+            cover_name = f"{manual_customers[0]['이름']}님 & {manual_customers[1]['이름']}님"
             combined_data = {
                 "고객1_이름": manual_customers[0]['이름'],
                 "고객1_생년월일": manual_customers[0]['생년월일'],
@@ -697,14 +783,12 @@ else:
         
         st.markdown("**📋 입력된 고객**")
         
-        # 상세 정보 표시
         for idx, cust in enumerate(manual_customers):
             info_text = f"**{cust['이름']}** | {cust['생년월일']} ({cust['음력양력']}) | {cust['태어난시간']}"
             st.caption(info_text)
         
         st.markdown("---")
         
-        # 상태 표시
         is_done = st.session_state.manual_completed
         
         col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
@@ -739,11 +823,9 @@ else:
                 
                 status_area.markdown(f"### 📝 {display_name} 생성 중...")
                 
-                # 서비스에 현재 유형 임시 설정
                 temp_service = selected_service.copy()
                 temp_service['service_type'] = 'couple' if num_customers == 2 else 'single'
                 
-                # PDF 생성 (2명이면 합친 데이터로)
                 pdf_bytes = generate_pdf_with_progress(
                     combined_data, temp_service, api_key,
                     current_progress_bar, current_detail,
