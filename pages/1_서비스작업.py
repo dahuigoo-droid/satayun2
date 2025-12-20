@@ -129,19 +129,37 @@ def show_service_edit_form(service, prefix):
             st.caption("📕 표지")
             cover_tpl = next((t for t in templates if t.get('template_type') == 'cover'), None) if templates else None
             if cover_tpl and cover_tpl.get('image_path'):
-                st.image(cover_tpl['image_path'], width=100)
+                try:
+                    if os.path.exists(cover_tpl['image_path']):
+                        st.image(cover_tpl['image_path'], width=100)
+                    else:
+                        st.caption("🖼️ (이미지 없음)")
+                except:
+                    st.caption("🖼️ (이미지 없음)")
             new_cover = st.file_uploader("표지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_cover_{svc_id}", label_visibility="collapsed")
         with design_cols[1]:
             st.caption("📄 내지")
             bg_tpl = next((t for t in templates if t.get('template_type') == 'background'), None) if templates else None
             if bg_tpl and bg_tpl.get('image_path'):
-                st.image(bg_tpl['image_path'], width=100)
+                try:
+                    if os.path.exists(bg_tpl['image_path']):
+                        st.image(bg_tpl['image_path'], width=100)
+                    else:
+                        st.caption("🖼️ (이미지 없음)")
+                except:
+                    st.caption("🖼️ (이미지 없음)")
             new_bg = st.file_uploader("내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_bg_{svc_id}", label_visibility="collapsed")
         with design_cols[2]:
             st.caption("📋 안내지")
             info_tpl = next((t for t in templates if t.get('template_type') == 'info'), None) if templates else None
             if info_tpl and info_tpl.get('image_path'):
-                st.image(info_tpl['image_path'], width=100)
+                try:
+                    if os.path.exists(info_tpl['image_path']):
+                        st.image(info_tpl['image_path'], width=100)
+                    else:
+                        st.caption("🖼️ (이미지 없음)")
+                except:
+                    st.caption("🖼️ (이미지 없음)")
             new_info = st.file_uploader("안내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_info_{svc_id}", label_visibility="collapsed")
     
     st.markdown("---")
