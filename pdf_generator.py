@@ -9,6 +9,7 @@
 import os
 import io
 import re
+import requests
 from datetime import datetime
 from openai import OpenAI
 from reportlab.lib.pagesizes import A4
@@ -16,6 +17,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from PIL import Image as PILImage
 
 # ============================================
 # 폰트 등록
@@ -46,6 +48,45 @@ def register_fonts():
 
 # 시작 시 폰트 등록
 DEFAULT_FONT = register_fonts()
+
+# ============================================
+# 이미지 로더 (URL 지원)
+# ============================================
+
+def load_image_for_pdf(image_path: str):
+    """
+    이미지 로드 - URL과 로컬 파일 모두 지원
+    Returns: BytesIO 객체 또는 파일 경로
+    """
+    if not image_path:
+        return None
+    
+    # URL인 경우 다운로드
+    if image_path.startswith("http"):
+        try:
+            print(f"[이미지] URL 다운로드: {image_path[:50]}...")
+            response = requests.get(image_path, timeout=10)
+            if response.status_code == 200:
+                img_data = io.BytesIO(response.content)
+                # PIL로 열어서 검증
+                img = PILImage.open(img_data)
+                img.verify()
+                # 다시 열기 (verify 후에는 다시 열어야 함)
+                img_data.seek(0)
+                print(f"[이미지] 다운로드 성공!")
+                return img_data
+            else:
+                print(f"[이미지] 다운로드 실패: {response.status_code}")
+        except Exception as e:
+            print(f"[이미지] URL 로드 오류: {e}")
+        return None
+    
+    # 로컬 파일인 경우
+    if os.path.exists(image_path):
+        return image_path
+    
+    print(f"[이미지] 파일 없음: {image_path}")
+    return None
 
 # ============================================
 # 텍스트 처리 유틸리티
@@ -288,23 +329,29 @@ class PDFGenerator:
         buffer = io.BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
         
+        # 이미지 미리 로드 (URL → BytesIO)
+        cover_img_data = load_image_for_pdf(cover_image)
+        intro_img_data = load_image_for_pdf(intro_image)
+        bg_img_data = load_image_for_pdf(background_image)
+        info_img_data = load_image_for_pdf(info_image)
+        
         # 1. 표지 페이지
-        self._draw_cover_page(c, cover_image, customer_name, service_type, customer_name2)
+        self._draw_cover_page(c, cover_img_data, customer_name, service_type, customer_name2)
         
         # 2. 소개 페이지
-        if intro_image:
-            self._draw_image_page(c, intro_image)
+        if intro_img_data:
+            self._draw_image_page(c, intro_img_data)
         
         # 3. 목차 페이지
         self._draw_toc_page(c, chapters_content)
         
         # 4. 본문 페이지들
         for chapter in chapters_content:
-            self._draw_content_pages(c, chapter, background_image)
+            self._draw_content_pages(c, chapter, bg_img_data)
         
         # 5. 안내 페이지
-        if info_image:
-            self._draw_image_page(c, info_image)
+        if info_img_data:
+            self._draw_image_page(c, info_img_data)
         
         c.save()
         buffer.seek(0)
@@ -329,14 +376,15 @@ class PDFGenerator:
         else:
             c.drawString(x, y, text)
     
-    def _draw_cover_page(self, c, cover_image, customer_name, service_type, customer_name2=None):
+    def _draw_cover_page(self, c, cover_img_data, customer_name, service_type, customer_name2=None):
         """표지 페이지 그리기"""
         # 배경 이미지
-        print(f"[표지] 이미지 경로: {cover_image}")
-        if cover_image:
+        if cover_img_data:
             try:
-                # 경로 존재 여부와 관계없이 시도
-                c.drawImage(cover_image, 0, 0, width=self.width, height=self.height, 
+                # BytesIO인 경우 위치 초기화
+                if hasattr(cover_img_data, 'seek'):
+                    cover_img_data.seek(0)
+                c.drawImage(cover_img_data, 0, 0, width=self.width, height=self.height, 
                            preserveAspectRatio=False, mask='auto')
                 print(f"[표지] 이미지 적용 성공")
             except Exception as e:
@@ -367,12 +415,14 @@ class PDFGenerator:
         
         c.showPage()
     
-    def _draw_image_page(self, c, image_path):
+    def _draw_image_page(self, c, img_data):
         """이미지 전체 페이지 그리기"""
-        print(f"[이미지페이지] 경로: {image_path}")
-        if image_path:
+        if img_data:
             try:
-                c.drawImage(image_path, 0, 0, width=self.width, height=self.height, 
+                # BytesIO인 경우 위치 초기화
+                if hasattr(img_data, 'seek'):
+                    img_data.seek(0)
+                c.drawImage(img_data, 0, 0, width=self.width, height=self.height, 
                            preserveAspectRatio=False, mask='auto')
                 print(f"[이미지페이지] 적용 성공")
             except Exception as e:
@@ -399,7 +449,7 @@ class PDFGenerator:
         
         c.showPage()
     
-    def _draw_content_pages(self, c, chapter, background_image):
+    def _draw_content_pages(self, c, chapter, bg_img_data):
         """본문 페이지들 그리기"""
         title = chapter['title']
         content = chapter['content']
@@ -408,7 +458,7 @@ class PDFGenerator:
         content = clean_markdown(content)
         
         # 새 페이지 시작
-        self._start_new_page(c, background_image)
+        self._start_new_page(c, bg_img_data)
         
         # 챕터 제목
         self._apply_text_style(c, self.font_size_subtitle, is_title=True)
@@ -432,7 +482,7 @@ class PDFGenerator:
             # 페이지 넘김 체크
             if y_position < self.margin_bottom:
                 c.showPage()
-                self._start_new_page(c, background_image)
+                self._start_new_page(c, bg_img_data)
                 self._apply_text_style(c, self.font_size_body)
                 y_position = self.height - self.margin_top
             
@@ -443,11 +493,14 @@ class PDFGenerator:
         
         c.showPage()
     
-    def _start_new_page(self, c, background_image):
+    def _start_new_page(self, c, bg_img_data):
         """새 페이지 시작 (배경 이미지 적용)"""
-        if background_image:
+        if bg_img_data:
             try:
-                c.drawImage(background_image, 0, 0, width=self.width, height=self.height, 
+                # BytesIO인 경우 위치 초기화
+                if hasattr(bg_img_data, 'seek'):
+                    bg_img_data.seek(0)
+                c.drawImage(bg_img_data, 0, 0, width=self.width, height=self.height, 
                            preserveAspectRatio=False, mask='auto')
             except Exception as e:
                 print(f"[배경] 이미지 오류: {e}")
