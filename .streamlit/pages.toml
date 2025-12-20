@@ -14,16 +14,26 @@ name = "자료실"
 icon = "📚"
 
 [[pages]]
-path = "pages/3_상품관리.py"
-name = "상품관리"
+path = "pages/3_기성제품.py"
+name = "기성제품"
 icon = "📦"
 
 [[pages]]
-path = "pages/4_마이페이지.py"
+path = "pages/4_개별제품.py"
+name = "개별제품"
+icon = "🎯"
+
+[[pages]]
+path = "pages/5_고급제품.py"
+name = "고급제품"
+icon = "👑"
+
+[[pages]]
+path = "pages/6_마이페이지.py"
 name = "마이페이지"
 icon = "👤"
 
 [[pages]]
-path = "pages/5_관리자설정.py"
+path = "pages/7_관리자설정.py"
 name = "관리자설정"
 icon = "⚙️"
