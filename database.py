@@ -116,6 +116,9 @@ class Service(Base):
     # 서비스 유형: single=1인용, couple=2인용
     service_type = Column(String(20), default="single")
     
+    # 상품 유형: 기성상품, 개별상품, 고급상품
+    product_category = Column(String(20), default="기성상품")
+    
     # 폰트 설정
     font_family = Column(String(50), default="NanumGothic")
     font_size_title = Column(Integer, default=24)

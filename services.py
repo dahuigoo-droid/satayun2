@@ -20,7 +20,7 @@ def _service_to_dict(s) -> dict:
         "owner_id": s.owner_id,
         "is_active": s.is_active,
         "service_type": s.service_type or "single",
-        "product_category": getattr(s, 'product_category', None) or "기성상품",  # ✅ 상품 유형
+        "product_category": s.product_category or "기성상품",
         "font_family": s.font_family or "NanumGothic",
         "font_size_title": s.font_size_title or 24,
         "font_size_subtitle": s.font_size_subtitle or 16,
@@ -63,21 +63,10 @@ def get_services_by_category(category: str) -> list:
     
     db = SessionLocal()
     try:
-        # product_category 컬럼이 있으면 사용, 없으면 기존 방식
-        try:
-            services = db.query(Service).filter(
-                Service.is_active == True,
-                Service.product_category == category
-            ).order_by(Service.created_at.desc()).all()
-        except:
-            # product_category 컬럼이 없는 경우 (마이그레이션 전)
-            if category == "기성상품":
-                services = db.query(Service).filter(
-                    Service.is_active == True,
-                    Service.owner_id == None
-                ).order_by(Service.created_at.desc()).all()
-            else:
-                services = []
+        services = db.query(Service).filter(
+            Service.is_active == True,
+            Service.product_category == category
+        ).order_by(Service.created_at.desc()).all()
         
         return [_service_to_dict(s) for s in services]
     except Exception as e:
@@ -151,6 +140,7 @@ def add_service(name: str, description: str = "", owner_id: int = None,
             owner_id=owner_id,
             is_active=True,
             service_type=service_type,
+            product_category=product_category,
             font_family=font_family,
             font_size_title=font_size_title,
             font_size_subtitle=font_size_subtitle,
@@ -164,12 +154,6 @@ def add_service(name: str, description: str = "", owner_id: int = None,
             margin_right=margin_right,
             target_pages=target_pages
         )
-        
-        # product_category 설정 (컬럼이 있는 경우)
-        try:
-            new_service.product_category = product_category
-        except:
-            pass
         
         db.add(new_service)
         db.commit()
