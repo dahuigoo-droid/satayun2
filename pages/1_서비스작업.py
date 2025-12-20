@@ -41,44 +41,92 @@ from notification import send_email_with_attachment
 # ============================================
 
 def show_service_edit_form(service, prefix):
-    """기존 상품 수정 폼"""
+    """기존 상품 수정 폼 (v1 스타일)"""
     svc_id = service['id']
     
-    # 현재 데이터 로드
     chapters = cached_get_chapters(svc_id)
     guidelines = cached_get_guidelines(svc_id)
     templates = cached_get_templates(svc_id)
     
-    # 상품명 수정
     new_name = st.text_input("상품명", value=service['name'], key=f"{prefix}_edit_name_{svc_id}")
     
-    # 목차 수정
-    chapter_text = "\n".join([ch['title'] for ch in chapters])
-    new_chapters = st.text_area("목차 (줄바꿈 구분)", value=chapter_text, height=150, key=f"{prefix}_edit_ch_{svc_id}")
+    col_left, col_right = st.columns(2)
+    with col_left:
+        st.markdown("**📑 목차**")
+        chapter_text = "\n".join([ch['title'] for ch in chapters])
+        new_chapters = st.text_area("목차", value=chapter_text, height=250, key=f"{prefix}_edit_ch_{svc_id}", label_visibility="collapsed")
     
-    # 지침 수정
-    guideline_text = guidelines[0]['content'] if guidelines else ""
-    new_guideline = st.text_area("AI 지침", value=guideline_text, height=150, key=f"{prefix}_edit_guide_{svc_id}")
+    with col_right:
+        st.markdown("**📜 지침**")
+        guideline_text = guidelines[0]['content'] if guidelines else ""
+        new_guideline = st.text_area("지침", value=guideline_text, height=250, key=f"{prefix}_edit_guide_{svc_id}", label_visibility="collapsed")
     
-    # 저장 버튼
+    with st.expander("⚙️ 폰트/디자인 설정", expanded=False):
+        st.markdown("**📄 목표 페이지 수**")
+        col_page, col_info = st.columns([1, 2])
+        with col_page:
+            target_pages = st.number_input("목표 페이지", value=service.get('target_pages', 30), min_value=5, max_value=100, key=f"{prefix}_pages_{svc_id}")
+        with col_info:
+            chars_per_page = 840
+            total_chars = chars_per_page * target_pages
+            st.success(f"📊 현재 설정: 페이지당 약 {chars_per_page}자 | 총 {total_chars:,}자 예상")
+        
+        st.markdown("**🔤 폰트 설정**")
+        font_cols = st.columns(4)
+        with font_cols[0]:
+            font_family = st.selectbox("폰트", list(FONT_OPTIONS.keys()), index=0, key=f"{prefix}_font_{svc_id}")
+        with font_cols[1]:
+            font_size_body = st.number_input("본문 크기", value=service.get('font_size_body', 12), min_value=8, max_value=24, key=f"{prefix}_fontsize_{svc_id}")
+        with font_cols[2]:
+            line_height = st.number_input("줄간격(%)", value=service.get('line_height', 180), min_value=100, max_value=300, key=f"{prefix}_lineheight_{svc_id}")
+        with font_cols[3]:
+            letter_spacing = st.number_input("자간", value=service.get('letter_spacing', 0), min_value=-5, max_value=10, key=f"{prefix}_letterspacing_{svc_id}")
+        
+        st.markdown("**📐 여백 설정 (mm)**")
+        margin_cols = st.columns(4)
+        with margin_cols[0]:
+            margin_top = st.number_input("상단", value=service.get('margin_top', 25), min_value=10, max_value=50, key=f"{prefix}_mt_{svc_id}")
+        with margin_cols[1]:
+            margin_bottom = st.number_input("하단", value=service.get('margin_bottom', 25), min_value=10, max_value=50, key=f"{prefix}_mb_{svc_id}")
+        with margin_cols[2]:
+            margin_left = st.number_input("좌측", value=service.get('margin_left', 25), min_value=10, max_value=50, key=f"{prefix}_ml_{svc_id}")
+        with margin_cols[3]:
+            margin_right = st.number_input("우측", value=service.get('margin_right', 25), min_value=10, max_value=50, key=f"{prefix}_mr_{svc_id}")
+        
+        st.markdown("**🖼️ 디자인 이미지**")
+        design_cols = st.columns(3)
+        with design_cols[0]:
+            st.caption("📕 표지")
+            cover_tpl = next((t for t in templates if t['type'] == 'cover'), None)
+            if cover_tpl and cover_tpl.get('image_url'):
+                st.image(cover_tpl['image_url'], width=100)
+            new_cover = st.file_uploader("표지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_cover_{svc_id}", label_visibility="collapsed")
+        with design_cols[1]:
+            st.caption("📄 내지")
+            bg_tpl = next((t for t in templates if t['type'] == 'background'), None)
+            if bg_tpl and bg_tpl.get('image_url'):
+                st.image(bg_tpl['image_url'], width=100)
+            new_bg = st.file_uploader("내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_bg_{svc_id}", label_visibility="collapsed")
+        with design_cols[2]:
+            st.caption("📋 안내지")
+            info_tpl = next((t for t in templates if t['type'] == 'info'), None)
+            if info_tpl and info_tpl.get('image_url'):
+                st.image(info_tpl['image_url'], width=100)
+            new_info = st.file_uploader("안내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_info_{svc_id}", label_visibility="collapsed")
+    
+    st.markdown("---")
+    
     col_save, col_delete = st.columns(2)
     with col_save:
         if st.button("💾 수정 저장", key=f"{prefix}_save_{svc_id}", type="primary", use_container_width=True):
-            # 상품명 업데이트
-            if new_name != service['name']:
-                update_service(svc_id, name=new_name)
-            
-            # 목차 업데이트
+            update_service(svc_id, name=new_name, target_pages=target_pages)
             new_chapter_list = [ch.strip() for ch in new_chapters.strip().split("\n") if ch.strip()]
             delete_chapters_by_service(svc_id)
             add_chapters_bulk(svc_id, new_chapter_list)
-            
-            # 지침 업데이트
             if guidelines:
                 update_guideline(guidelines[0]['id'], content=new_guideline)
             elif new_guideline:
                 add_guideline(svc_id, f"{new_name} 지침", new_guideline)
-            
             clear_service_cache()
             st.success("✅ 수정 완료!")
             st.rerun()
@@ -326,7 +374,7 @@ if "엑셀" in input_method:
         st.session_state.input_mode = "excel"
         st.success(f"✅ {len(df)}건 로드됨")
     
-    if st.session_state.customers_df is not None and st.session_state.get('input_mode') == 'excel':
+    if st.session_state.get('customers_df') is not None and st.session_state.get('input_mode') == 'excel':
         df = st.session_state.customers_df
         
         # 컬럼명으로 1인/2인 자동 판별
@@ -367,7 +415,7 @@ if "엑셀" in input_method:
         # ===== 업무 자동화 콘솔: 간소화된 UI =====
         # 요약 정보만 표시 (개별 선택 제거)
         total_count = len(df)
-        completed_count = len(st.session_state.completed_customers)
+        completed_count = len(st.session_state.get('completed_customers', {}))
         pending_count = total_count - completed_count
         
         # 진행 상태 카드
@@ -397,7 +445,7 @@ if "엑셀" in input_method:
         if completed_count > 0 or st.session_state.get('work_errors'):
             with st.expander(f"📋 처리 결과 ({completed_count}건 완료)", expanded=False):
                 # 완료된 항목
-                for idx in st.session_state.completed_customers:
+                for idx in st.session_state.get('completed_customers', {}):
                     if idx < len(df):
                         row = df.iloc[idx]
                         if is_couple:
@@ -411,7 +459,7 @@ if "엑셀" in input_method:
                         
                         col_name, col_dl = st.columns([3, 1])
                         col_name.markdown(f"✅ **{display_name}**")
-                        pdf_data = st.session_state.generated_pdfs.get(idx)
+                        pdf_data = st.session_state.get('generated_pdfs', {}).get(idx)
                         if pdf_data:
                             col_dl.download_button("⬇️", pdf_data, filename, "application/pdf", key=f"dl_{idx}")
                 
@@ -438,7 +486,7 @@ if "엑셀" in input_method:
                 st.session_state.work_start_time = time.time()
                 
                 # 전체 고객 자동 선택 (개별 선택 없음)
-                pending_indices = [i for i in range(len(df)) if i not in st.session_state.completed_customers]
+                pending_indices = [i for i in range(len(df)) if i not in st.session_state.get('completed_customers', {})]
                 
                 # 진행 상태 영역
                 progress_container = st.container()
@@ -470,9 +518,13 @@ if "엑셀" in input_method:
                     # 멱등성 체크
                     order_hash = generate_order_hash(row.to_dict(), selected_service['id'])
                     if is_already_generated(order_hash):
-                        cached_pdf = st.session_state.pdf_hashes.get(order_hash)
+                        cached_pdf = st.session_state.get('pdf_hashes', {}).get(order_hash)
                         if cached_pdf:
+                            if 'completed_customers' not in st.session_state:
+                                st.session_state.completed_customers = {}
                             st.session_state.completed_customers[idx] = True
+                            if 'generated_pdfs' not in st.session_state:
+                                st.session_state.generated_pdfs = {}
                             st.session_state.generated_pdfs[idx] = cached_pdf
                             continue
                     
@@ -491,18 +543,26 @@ if "엑셀" in input_method:
                         current_progress_bar.empty()
                         
                         if pdf_bytes:
+                            if 'completed_customers' not in st.session_state:
+                                st.session_state.completed_customers = {}
                             st.session_state.completed_customers[idx] = True
+                            if 'generated_pdfs' not in st.session_state:
+                                st.session_state.generated_pdfs = {}
                             st.session_state.generated_pdfs[idx] = pdf_bytes
                             mark_as_generated(order_hash, pdf_bytes)
                             # 성공은 조용히 (토스트만)
                         else:
                             # 실패 기록
+                            if 'work_errors' not in st.session_state:
+                                st.session_state.work_errors = []
                             st.session_state.work_errors.append({
                                 'name': display_name,
                                 'error': 'PDF 생성 실패'
                             })
                     except Exception as e:
                         # 실패 기록 (사용자 친화적 메시지)
+                        if 'work_errors' not in st.session_state:
+                            st.session_state.work_errors = []
                         st.session_state.work_errors.append({
                             'name': display_name,
                             'error': str(e)
@@ -516,7 +576,7 @@ if "엑셀" in input_method:
                     render_progress_card(len(pending_indices), len(pending_indices), "완료!")
                 
                 # 실패가 있으면 강조
-                if st.session_state.work_errors:
+                if st.session_state.get('work_errors'):
                     status_area.error(f"⚠️ {len(st.session_state.work_errors)}건 처리 실패 - 아래 목록 확인")
                     for err in st.session_state.work_errors:
                         render_error_card(err['name'], err['error'])
@@ -708,4 +768,3 @@ else:
             st.warning("⚠️ 이름을 입력하세요.")
         else:
             st.warning("⚠️ 두 고객의 이름을 모두 입력하세요.")
-
