@@ -1,163 +1,156 @@
 # -*- coding: utf-8 -*-
 """
-📄 PDF 생성 모듈
-- GPT 호출 (목차별 분할)
-- PDF 생성 (표지→소개→본문→안내)
-- 디자인 설정 완전 반영
+📄 PDF 생성 모듈 (최적화 버전)
+- 이미지 캐싱
+- OpenAI 클라이언트 재사용
+- 마크다운 제거
 """
 
 import os
 import io
 import re
-import requests
+import hashlib
+from functools import lru_cache
 from datetime import datetime
+from typing import Optional, Dict, List, Callable
+
+import requests
 from openai import OpenAI
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from PIL import Image as PILImage
 
 # ============================================
-# 폰트 등록
+# 폰트 등록 (한 번만)
 # ============================================
 
 FONT_MAP = {
     'NanumGothic': '/usr/share/fonts/truetype/nanum/NanumGothic.ttf',
-    'NanumGothicBold': '/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf',
     'NanumMyeongjo': '/usr/share/fonts/truetype/nanum/NanumMyeongjo.ttf',
-    'NanumMyeongjoBold': '/usr/share/fonts/truetype/nanum/NanumMyeongjoBold.ttf',
     'NanumBarunGothic': '/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf',
-    'NanumSquareRound': '/usr/share/fonts/truetype/nanum/NanumSquareRoundR.ttf',
 }
 
-def register_fonts():
-    """한글 폰트 등록"""
-    registered = []
+_fonts_registered = False
+DEFAULT_FONT = 'Helvetica'
+
+def _register_fonts():
+    """폰트 등록 (최초 1회만)"""
+    global _fonts_registered, DEFAULT_FONT
+    if _fonts_registered:
+        return DEFAULT_FONT
     
     for name, path in FONT_MAP.items():
         try:
             if os.path.exists(path):
                 pdfmetrics.registerFont(TTFont(name, path))
-                registered.append(name)
-        except Exception as e:
-            print(f"폰트 등록 실패 ({name}): {e}")
+                DEFAULT_FONT = name
+        except:
+            pass
     
-    return registered[0] if registered else 'Helvetica'
+    _fonts_registered = True
+    return DEFAULT_FONT
 
-# 시작 시 폰트 등록
-DEFAULT_FONT = register_fonts()
+_register_fonts()
+
 
 # ============================================
-# 이미지 로더 (URL 지원)
+# 이미지 캐싱 (LRU)
 # ============================================
 
-def load_image_for_pdf(image_path: str):
-    """
-    이미지 로드 - URL과 로컬 파일 모두 지원
-    Returns: BytesIO 객체 또는 파일 경로
-    """
+@lru_cache(maxsize=50)
+def _download_image(url: str) -> Optional[bytes]:
+    """URL에서 이미지 다운로드 (캐싱)"""
+    try:
+        response = requests.get(url, timeout=15)
+        if response.status_code == 200:
+            return response.content
+    except:
+        pass
+    return None
+
+
+def load_image_for_pdf(image_path: str) -> Optional[io.BytesIO]:
+    """이미지 로드 - URL/로컬 모두 지원, 캐싱 적용"""
     if not image_path:
         return None
     
-    # URL인 경우 다운로드
+    # URL인 경우
     if image_path.startswith("http"):
-        try:
-            print(f"[이미지] URL 다운로드: {image_path[:50]}...")
-            response = requests.get(image_path, timeout=10)
-            if response.status_code == 200:
-                img_data = io.BytesIO(response.content)
-                # PIL로 열어서 검증
-                img = PILImage.open(img_data)
-                img.verify()
-                # 다시 열기 (verify 후에는 다시 열어야 함)
-                img_data.seek(0)
-                print(f"[이미지] 다운로드 성공!")
-                return img_data
-            else:
-                print(f"[이미지] 다운로드 실패: {response.status_code}")
-        except Exception as e:
-            print(f"[이미지] URL 로드 오류: {e}")
+        content = _download_image(image_path)
+        if content:
+            return io.BytesIO(content)
         return None
     
     # 로컬 파일인 경우
     if os.path.exists(image_path):
         return image_path
     
-    print(f"[이미지] 파일 없음: {image_path}")
     return None
 
+
 # ============================================
-# 텍스트 처리 유틸리티
+# 텍스트 처리
 # ============================================
 
+# 정규식 사전 컴파일 (성능 최적화)
+_MD_PATTERNS = [
+    (re.compile(r'^#{1,6}\s*', re.MULTILINE), ''),
+    (re.compile(r'\*\*([^*]+)\*\*'), r'\1'),
+    (re.compile(r'\*([^*]+)\*'), r'\1'),
+    (re.compile(r'__([^_]+)__'), r'\1'),
+    (re.compile(r'_([^_]+)_'), r'\1'),
+    (re.compile(r'`([^`]+)`'), r'\1'),
+    (re.compile(r'\[([^\]]+)\]\([^)]+\)'), r'\1'),
+    (re.compile(r'^\s*[-*+]\s+', re.MULTILINE), '• '),
+    (re.compile(r'^\s*\d+\.\s+', re.MULTILINE), ''),
+    (re.compile(r'\n{3,}'), '\n\n'),
+]
+
 def clean_markdown(text: str) -> str:
-    """마크다운 문법 제거"""
+    """마크다운 문법 제거 (최적화)"""
     if not text:
         return ""
-    
-    # ### 헤더 제거 (줄 시작의 # 들)
-    text = re.sub(r'^#{1,6}\s*', '', text, flags=re.MULTILINE)
-    
-    # **볼드** 제거
-    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
-    
-    # *이탤릭* 제거
-    text = re.sub(r'\*([^*]+)\*', r'\1', text)
-    
-    # __볼드__ 제거
-    text = re.sub(r'__([^_]+)__', r'\1', text)
-    
-    # _이탤릭_ 제거
-    text = re.sub(r'_([^_]+)_', r'\1', text)
-    
-    # `코드` 제거
-    text = re.sub(r'`([^`]+)`', r'\1', text)
-    
-    # [링크](url) 제거
-    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
-    
-    # - 리스트 마커 제거 (줄 시작)
-    text = re.sub(r'^\s*[-*+]\s+', '• ', text, flags=re.MULTILINE)
-    
-    # 숫자 리스트 마커 정리
-    text = re.sub(r'^\s*\d+\.\s+', '', text, flags=re.MULTILINE)
-    
-    # 연속 빈 줄 하나로
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    
+    for pattern, repl in _MD_PATTERNS:
+        text = pattern.sub(repl, text)
     return text.strip()
 
 
-def wrap_text_korean(text: str, max_chars: int) -> list:
-    """한글 텍스트 줄바꿈 (글자 수 기준)"""
+def wrap_text_korean(text: str, max_chars: int) -> List[str]:
+    """한글 텍스트 줄바꿈"""
     lines = []
-    
     for paragraph in text.split('\n'):
         paragraph = paragraph.strip()
-        
         if not paragraph:
             lines.append('')
             continue
         
         while len(paragraph) > max_chars:
-            # 최대 글자 수에서 자르되, 단어 중간이면 조정
-            cut_point = max_chars
-            
-            # 공백이나 구두점에서 자르기 시도
+            cut = max_chars
             for i in range(max_chars, max(0, max_chars - 10), -1):
                 if i < len(paragraph) and paragraph[i] in ' .,!?。，！？':
-                    cut_point = i + 1
+                    cut = i + 1
                     break
-            
-            lines.append(paragraph[:cut_point].strip())
-            paragraph = paragraph[cut_point:].strip()
+            lines.append(paragraph[:cut].strip())
+            paragraph = paragraph[cut:].strip()
         
         if paragraph:
             lines.append(paragraph)
-    
     return lines
+
+
+# ============================================
+# OpenAI 클라이언트 캐싱
+# ============================================
+
+_openai_clients: Dict[str, OpenAI] = {}
+
+def _get_openai_client(api_key: str) -> OpenAI:
+    """OpenAI 클라이언트 재사용"""
+    if api_key not in _openai_clients:
+        _openai_clients[api_key] = OpenAI(api_key=api_key)
+    return _openai_clients[api_key]
 
 
 # ============================================
@@ -172,15 +165,12 @@ def generate_chapter_content(
     service_type: str,
     model: str = "gpt-4o-mini"
 ) -> str:
-    """단일 챕터(목차) 콘텐츠 생성"""
+    """단일 챕터 콘텐츠 생성"""
     try:
-        client = OpenAI(api_key=api_key)
-        
-        # 고객 정보 포맷팅
+        client = _get_openai_client(api_key)
         customer_str = "\n".join([f"- {k}: {v}" for k, v in customer_info.items() if v])
         
-        prompt = f"""
-[서비스 유형]
+        prompt = f"""[서비스 유형]
 {service_type}
 
 [고객 정보]
@@ -197,29 +187,23 @@ def generate_chapter_content(
 - 구체적인 조언과 예시 포함
 - 따뜻하고 희망적인 톤 유지
 - 최소 500자 이상 작성
-- 마크다운 문법(###, **, 등) 사용하지 말고 일반 텍스트로 작성
-- 챕터 제목은 다시 쓰지 마세요
-"""
+- 마크다운 문법 사용하지 말고 일반 텍스트로 작성
+- 챕터 제목은 다시 쓰지 마세요"""
         
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {
-                    "role": "system", 
-                    "content": f"당신은 전문적이고 따뜻한 {service_type} 전문가입니다. 마크다운 없이 일반 텍스트로만 답변하세요."
-                },
+                {"role": "system", "content": f"당신은 전문적이고 따뜻한 {service_type} 전문가입니다. 마크다운 없이 일반 텍스트로만 답변하세요."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000,
             temperature=0.7
         )
         
-        content = response.choices[0].message.content
-        # 마크다운 제거
-        return clean_markdown(content)
+        return clean_markdown(response.choices[0].message.content)
     
     except Exception as e:
-        return f"[오류 발생: {str(e)}]"
+        return f"[오류: {str(e)}]"
 
 
 def generate_full_content(
@@ -229,29 +213,20 @@ def generate_full_content(
     guideline: str,
     service_type: str,
     model: str = "gpt-4o-mini",
-    progress_callback=None
-) -> list:
-    """전체 콘텐츠 생성 (목차별 분할 요청)"""
+    progress_callback: Callable = None
+) -> List[Dict]:
+    """전체 콘텐츠 생성"""
     full_content = []
     total = len(chapters)
     
     for i, chapter in enumerate(chapters):
         if progress_callback:
-            progress_callback((i + 1) / total, f"'{chapter}' 작성 중... ({i+1}/{total})")
+            progress_callback((i + 1) / total, f"'{chapter}' 작성 중...")
         
         content = generate_chapter_content(
-            api_key=api_key,
-            customer_info=customer_info,
-            chapter_title=chapter,
-            guideline=guideline,
-            service_type=service_type,
-            model=model
+            api_key, customer_info, chapter, guideline, service_type, model
         )
-        
-        full_content.append({
-            "title": chapter,
-            "content": content
-        })
+        full_content.append({"title": chapter, "content": content})
     
     return full_content
 
@@ -261,7 +236,7 @@ def generate_full_content(
 # ============================================
 
 class PDFGenerator:
-    """PDF 생성 클래스 - 디자인 설정 완전 반영"""
+    """PDF 생성기"""
     
     def __init__(
         self,
@@ -269,51 +244,36 @@ class PDFGenerator:
         font_size_title: int = 24,
         font_size_subtitle: int = 16,
         font_size_body: int = 12,
-        line_height: int = 180,      # 퍼센트 (180 = 1.8배)
-        letter_spacing: int = 0,     # 퍼센트
-        char_width: int = 100,       # 장평 퍼센트
-        margin_top: int = 25,        # mm
-        margin_bottom: int = 25,     # mm
-        margin_left: int = 25,       # mm
-        margin_right: int = 25,      # mm
+        line_height: int = 180,
+        letter_spacing: int = 0,
+        char_width: int = 100,
+        margin_top: int = 25,
+        margin_bottom: int = 25,
+        margin_left: int = 25,
+        margin_right: int = 25,
         target_pages: int = 30
     ):
-        # 폰트 설정
         self.font_name = font_name if font_name in FONT_MAP else DEFAULT_FONT
         self.font_size_title = font_size_title
         self.font_size_subtitle = font_size_subtitle
         self.font_size_body = font_size_body
         
-        # 행간 (퍼센트를 실제 값으로)
         self.line_height_ratio = line_height / 100.0
         self.line_height = font_size_body * self.line_height_ratio
+        self.char_width = char_width / 100.0
         
-        # 자간, 장평
-        self.letter_spacing = letter_spacing
-        self.char_width = char_width / 100.0  # 1.0 = 100%
-        
-        # 여백 (mm → 포인트)
         self.margin_top = margin_top * mm
         self.margin_bottom = margin_bottom * mm
         self.margin_left = margin_left * mm
         self.margin_right = margin_right * mm
         
-        self.target_pages = target_pages
-        
-        # 페이지 크기
         self.width, self.height = A4
-        
-        # 사용 가능 영역
         self.usable_width = self.width - self.margin_left - self.margin_right
         self.usable_height = self.height - self.margin_top - self.margin_bottom
         
-        # 한 줄 글자 수 계산 (한글은 full-width이므로 font_size와 거의 동일)
-        char_width_pt = self.font_size_body * 1.0 * self.char_width
+        char_width_pt = font_size_body * 1.0 * self.char_width
         self.chars_per_line = int(self.usable_width / char_width_pt)
-        
-        print(f"[PDF설정] 여백: 상{margin_top}mm 하{margin_bottom}mm 좌{margin_left}mm 우{margin_right}mm")
-        print(f"[PDF설정] 글자수/줄: {self.chars_per_line}, 본문크기: {font_size_body}pt")
-        
+    
     def create_pdf(
         self,
         chapters_content: list,
@@ -329,185 +289,127 @@ class PDFGenerator:
         buffer = io.BytesIO()
         c = canvas.Canvas(buffer, pagesize=A4)
         
-        # 이미지 미리 로드 (URL → BytesIO)
-        cover_img_data = load_image_for_pdf(cover_image)
-        intro_img_data = load_image_for_pdf(intro_image)
-        bg_img_data = load_image_for_pdf(background_image)
-        info_img_data = load_image_for_pdf(info_image)
+        # 이미지 로드 (캐싱됨)
+        cover_data = load_image_for_pdf(cover_image)
+        intro_data = load_image_for_pdf(intro_image)
+        bg_data = load_image_for_pdf(background_image)
+        info_data = load_image_for_pdf(info_image)
         
-        # 1. 표지 페이지
-        self._draw_cover_page(c, cover_img_data, customer_name, service_type, customer_name2)
+        # 1. 표지
+        self._draw_cover(c, cover_data, customer_name, service_type, customer_name2)
         
-        # 2. 소개 페이지
-        if intro_img_data:
-            self._draw_image_page(c, intro_img_data)
+        # 2. 소개 (있으면)
+        if intro_data:
+            self._draw_full_image(c, intro_data)
         
-        # 3. 목차 페이지
-        self._draw_toc_page(c, chapters_content)
+        # 3. 목차
+        self._draw_toc(c, chapters_content)
         
-        # 4. 본문 페이지들
+        # 4. 본문
         for chapter in chapters_content:
-            self._draw_content_pages(c, chapter, bg_img_data)
+            self._draw_chapter(c, chapter, bg_data)
         
-        # 5. 안내 페이지
-        if info_img_data:
-            self._draw_image_page(c, info_img_data)
+        # 5. 안내 (있으면)
+        if info_data:
+            self._draw_full_image(c, info_data)
         
         c.save()
         buffer.seek(0)
         return buffer.getvalue()
     
-    def _apply_text_style(self, c, font_size, is_title=False):
-        """텍스트 스타일 적용"""
-        c.setFont(self.font_name, font_size)
-        # 자간은 reportlab 기본 기능으로 지원 안됨 - 생략
-    
-    def _draw_text_with_style(self, c, x, y, text, font_size):
-        """장평 적용된 텍스트 그리기"""
-        self._apply_text_style(c, font_size)
-        
-        if self.char_width != 1.0:
-            # 장평 적용
-            c.saveState()
-            c.translate(x, y)
-            c.scale(self.char_width, 1)
-            c.drawString(0, 0, text)
-            c.restoreState()
-        else:
-            c.drawString(x, y, text)
-    
-    def _draw_cover_page(self, c, cover_img_data, customer_name, service_type, customer_name2=None):
-        """표지 페이지 그리기"""
-        # 배경 이미지
-        if cover_img_data:
-            try:
-                # BytesIO인 경우 위치 초기화
-                if hasattr(cover_img_data, 'seek'):
-                    cover_img_data.seek(0)
-                c.drawImage(cover_img_data, 0, 0, width=self.width, height=self.height, 
-                           preserveAspectRatio=False, mask='auto')
-                print(f"[표지] 이미지 적용 성공")
-            except Exception as e:
-                print(f"[표지] 이미지 오류: {e}")
-        
-        # 고객 이름
-        c.setFont(self.font_name, self.font_size_title + 4)
-        
-        if customer_name2:
-            name_text = f"{customer_name}  ♥  {customer_name2}"
-        else:
-            name_text = f"{customer_name} 님"
-        
-        text_width = c.stringWidth(name_text, self.font_name, self.font_size_title + 4)
-        c.drawString((self.width - text_width) / 2, self.height * 0.25, name_text)
-        
-        # 서비스 유형
-        c.setFont(self.font_name, self.font_size_subtitle)
-        service_text = f"{service_type}"
-        text_width = c.stringWidth(service_text, self.font_name, self.font_size_subtitle)
-        c.drawString((self.width - text_width) / 2, self.height * 0.20, service_text)
-        
-        # 날짜
-        c.setFont(self.font_name, self.font_size_body)
-        date_text = datetime.now().strftime("%Y년 %m월 %d일")
-        text_width = c.stringWidth(date_text, self.font_name, self.font_size_body)
-        c.drawString((self.width - text_width) / 2, self.height * 0.15, date_text)
-        
-        c.showPage()
-    
-    def _draw_image_page(self, c, img_data):
-        """이미지 전체 페이지 그리기"""
+    def _draw_image(self, c, img_data, x, y, w, h):
+        """이미지 그리기 헬퍼"""
         if img_data:
             try:
-                # BytesIO인 경우 위치 초기화
                 if hasattr(img_data, 'seek'):
                     img_data.seek(0)
-                c.drawImage(img_data, 0, 0, width=self.width, height=self.height, 
-                           preserveAspectRatio=False, mask='auto')
-                print(f"[이미지페이지] 적용 성공")
-            except Exception as e:
-                print(f"[이미지페이지] 오류: {e}")
+                c.drawImage(img_data, x, y, width=w, height=h, preserveAspectRatio=False, mask='auto')
+            except:
+                pass
+    
+    def _draw_cover(self, c, cover_data, name, service_type, name2=None):
+        """표지 페이지"""
+        self._draw_image(c, cover_data, 0, 0, self.width, self.height)
+        
+        c.setFont(self.font_name, self.font_size_title + 4)
+        name_text = f"{name}  ♥  {name2}" if name2 else f"{name} 님"
+        tw = c.stringWidth(name_text, self.font_name, self.font_size_title + 4)
+        c.drawString((self.width - tw) / 2, self.height * 0.25, name_text)
+        
+        c.setFont(self.font_name, self.font_size_subtitle)
+        tw = c.stringWidth(service_type, self.font_name, self.font_size_subtitle)
+        c.drawString((self.width - tw) / 2, self.height * 0.20, service_type)
+        
+        c.setFont(self.font_name, self.font_size_body)
+        date_text = datetime.now().strftime("%Y년 %m월 %d일")
+        tw = c.stringWidth(date_text, self.font_name, self.font_size_body)
+        c.drawString((self.width - tw) / 2, self.height * 0.15, date_text)
+        
         c.showPage()
     
-    def _draw_toc_page(self, c, chapters_content):
-        """목차 페이지 그리기"""
+    def _draw_full_image(self, c, img_data):
+        """전체 이미지 페이지"""
+        self._draw_image(c, img_data, 0, 0, self.width, self.height)
+        c.showPage()
+    
+    def _draw_toc(self, c, chapters):
+        """목차 페이지"""
         c.setFont(self.font_name, self.font_size_title)
         c.drawString(self.margin_left, self.height - self.margin_top, "목 차")
         
         c.setFont(self.font_name, self.font_size_subtitle)
-        y_position = self.height - self.margin_top - 60
+        y = self.height - self.margin_top - 60
         
-        for i, chapter in enumerate(chapters_content):
-            title = chapter['title']
-            c.drawString(self.margin_left + 10, y_position, f"{i+1}. {title}")
-            y_position -= 30
-            
-            if y_position < self.margin_bottom:
+        for i, ch in enumerate(chapters):
+            c.drawString(self.margin_left + 10, y, f"{i+1}. {ch['title']}")
+            y -= 30
+            if y < self.margin_bottom:
                 c.showPage()
                 c.setFont(self.font_name, self.font_size_subtitle)
-                y_position = self.height - self.margin_top
+                y = self.height - self.margin_top
         
         c.showPage()
     
-    def _draw_content_pages(self, c, chapter, bg_img_data):
-        """본문 페이지들 그리기"""
+    def _draw_chapter(self, c, chapter, bg_data):
+        """챕터 페이지들"""
         title = chapter['title']
-        content = chapter['content']
+        content = clean_markdown(chapter['content'])
         
-        # 마크다운 한번 더 정리
-        content = clean_markdown(content)
-        
-        # 새 페이지 시작
-        self._start_new_page(c, bg_img_data)
-        
-        # 챕터 제목
-        self._apply_text_style(c, self.font_size_subtitle, is_title=True)
+        # 첫 페이지
+        self._draw_image(c, bg_data, 0, 0, self.width, self.height)
+        c.setFont(self.font_name, self.font_size_subtitle)
         c.drawString(self.margin_left, self.height - self.margin_top, f"■ {title}")
         
-        # 본문 시작 위치
-        y_position = self.height - self.margin_top - 40
+        y = self.height - self.margin_top - 40
+        c.setFont(self.font_name, self.font_size_body)
         
-        # 본문 스타일 적용
-        self._apply_text_style(c, self.font_size_body)
-        
-        # 텍스트 줄바꿈
-        lines = wrap_text_korean(content, self.chars_per_line)
-        
-        for line in lines:
-            # 빈 줄은 줄간격만큼 이동
+        for line in wrap_text_korean(content, self.chars_per_line):
             if not line.strip():
-                y_position -= self.line_height * 0.5
+                y -= self.line_height * 0.5
                 continue
             
-            # 페이지 넘김 체크
-            if y_position < self.margin_bottom:
+            if y < self.margin_bottom:
                 c.showPage()
-                self._start_new_page(c, bg_img_data)
-                self._apply_text_style(c, self.font_size_body)
-                y_position = self.height - self.margin_top
+                self._draw_image(c, bg_data, 0, 0, self.width, self.height)
+                c.setFont(self.font_name, self.font_size_body)
+                y = self.height - self.margin_top
             
-            # 텍스트 그리기 (장평 적용)
-            self._draw_text_with_style(c, self.margin_left, y_position, line, self.font_size_body)
+            if self.char_width != 1.0:
+                c.saveState()
+                c.translate(self.margin_left, y)
+                c.scale(self.char_width, 1)
+                c.drawString(0, 0, line)
+                c.restoreState()
+            else:
+                c.drawString(self.margin_left, y, line)
             
-            y_position -= self.line_height
+            y -= self.line_height
         
         c.showPage()
-    
-    def _start_new_page(self, c, bg_img_data):
-        """새 페이지 시작 (배경 이미지 적용)"""
-        if bg_img_data:
-            try:
-                # BytesIO인 경우 위치 초기화
-                if hasattr(bg_img_data, 'seek'):
-                    bg_img_data.seek(0)
-                c.drawImage(bg_img_data, 0, 0, width=self.width, height=self.height, 
-                           preserveAspectRatio=False, mask='auto')
-            except Exception as e:
-                print(f"[배경] 이미지 오류: {e}")
 
 
 # ============================================
-# 합본 PDF 생성
+# 합본 PDF (호환성)
 # ============================================
 
 def generate_combined_pdf(
@@ -517,71 +419,35 @@ def generate_combined_pdf(
     font_settings: dict,
     progress_callback=None
 ) -> bytes:
-    """여러 서비스 합본 PDF 생성"""
-    all_chapters_content = []
+    """여러 서비스 합본 PDF"""
+    all_content = []
+    total = sum(len(s['chapters']) for s in services_data)
+    current = 0
     
-    total_chapters = sum(len(s['chapters']) for s in services_data)
-    current_chapter = 0
-    
-    for service in services_data:
-        service_name = service['service_name']
-        chapters = service['chapters']
-        guideline = service.get('guideline', '')
-        
-        for chapter in chapters:
-            current_chapter += 1
-            
+    for svc in services_data:
+        for ch in svc['chapters']:
+            current += 1
             if progress_callback:
-                progress_callback(
-                    current_chapter / total_chapters,
-                    f"[{service_name}] '{chapter}' 작성 중... ({current_chapter}/{total_chapters})"
-                )
+                progress_callback(current / total, f"[{svc['service_name']}] '{ch}' 작성 중...")
             
             content = generate_chapter_content(
-                api_key=api_key,
-                customer_info=customer_info,
-                chapter_title=f"{service_name} - {chapter}",
-                guideline=guideline,
-                service_type=service_name
+                api_key, customer_info,
+                f"{svc['service_name']} - {ch}",
+                svc.get('guideline', ''),
+                svc['service_name']
             )
-            
-            all_chapters_content.append({
-                "title": f"{service_name} - {chapter}",
-                "content": content
-            })
+            all_content.append({"title": f"{svc['service_name']} - {ch}", "content": content})
     
-    # PDF 생성
-    pdf_gen = PDFGenerator(
-        font_name=font_settings.get('font_family', 'NanumGothic'),
-        font_size_title=font_settings.get('font_size_title', 24),
-        font_size_subtitle=font_settings.get('font_size_subtitle', 16),
-        font_size_body=font_settings.get('font_size_body', 12),
-        line_height=font_settings.get('line_height', 180),
-        letter_spacing=font_settings.get('letter_spacing', 0),
-        char_width=font_settings.get('char_width', 100),
-        margin_top=font_settings.get('margin_top', 25),
-        margin_bottom=font_settings.get('margin_bottom', 25),
-        margin_left=font_settings.get('margin_left', 25),
-        margin_right=font_settings.get('margin_right', 25),
-        target_pages=font_settings.get('target_pages', 30)
+    pdf_gen = PDFGenerator(**font_settings)
+    first = services_data[0] if services_data else {}
+    
+    return pdf_gen.create_pdf(
+        chapters_content=all_content,
+        customer_name=customer_info.get('이름', '고객'),
+        service_type=" + ".join([s['service_name'] for s in services_data]),
+        cover_image=first.get('cover_image'),
+        intro_image=first.get('intro_image'),
+        background_image=first.get('background_image'),
+        info_image=first.get('info_image'),
+        customer_name2=customer_info.get('이름2')
     )
-    
-    first_service = services_data[0] if services_data else {}
-    
-    customer_name = customer_info.get('이름', customer_info.get('name', '고객'))
-    customer_name2 = customer_info.get('이름2', customer_info.get('name2', None))
-    
-    service_types = " + ".join([s['service_name'] for s in services_data])
-    
-    pdf_bytes = pdf_gen.create_pdf(
-        chapters_content=all_chapters_content,
-        customer_name=customer_name,
-        service_type=service_types,
-        cover_image=first_service.get('cover_image'),
-        intro_image=first_service.get('intro_image'),
-        background_image=first_service.get('background_image'),
-        info_image=first_service.get('info_image'),
-        customer_name2=customer_name2
-    )
-    
-    return pdf_bytes
