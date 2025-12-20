@@ -308,17 +308,9 @@ class PDFGenerator:
         return buffer.getvalue()
     
     def _apply_text_style(self, c, font_size, is_title=False):
-        """텍스트 스타일 적용 (자간, 장평)"""
+        """텍스트 스타일 적용"""
         c.setFont(self.font_name, font_size)
-        
-        # 자간 적용 (charSpace)
-        if self.letter_spacing != 0:
-            char_space = font_size * (self.letter_spacing / 100.0)
-            c.setCharSpace(char_space)
-        else:
-            c.setCharSpace(0)
-        
-        # 장평은 drawString에서 직접 처리 (scale 사용)
+        # 자간은 reportlab 기본 기능으로 지원 안됨 - 생략
     
     def _draw_text_with_style(self, c, x, y, text, font_size):
         """장평 적용된 텍스트 그리기"""
