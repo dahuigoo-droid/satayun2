@@ -48,17 +48,17 @@ def show_service_edit_form(service, prefix):
     guidelines = cached_get_guidelines(svc_id)
     templates = cached_get_templates(svc_id)
     
-    new_name = st.text_input("상품명", value=service['name'], key=f"{prefix}_edit_name_{svc_id}")
+    new_name = st.text_input("상품명", value=service.get('name', ''), key=f"{prefix}_edit_name_{svc_id}")
     
     col_left, col_right = st.columns(2)
     with col_left:
         st.markdown("**📑 목차**")
-        chapter_text = "\n".join([ch['title'] for ch in chapters])
+        chapter_text = "\n".join([ch.get('title', '') for ch in chapters]) if chapters else ""
         new_chapters = st.text_area("목차", value=chapter_text, height=250, key=f"{prefix}_edit_ch_{svc_id}", label_visibility="collapsed")
     
     with col_right:
         st.markdown("**📜 지침**")
-        guideline_text = guidelines[0]['content'] if guidelines else ""
+        guideline_text = guidelines[0].get('content', '') if guidelines else ""
         new_guideline = st.text_area("지침", value=guideline_text, height=250, key=f"{prefix}_edit_guide_{svc_id}", label_visibility="collapsed")
     
     with st.expander("⚙️ 폰트/디자인 설정", expanded=False):
@@ -97,19 +97,19 @@ def show_service_edit_form(service, prefix):
         design_cols = st.columns(3)
         with design_cols[0]:
             st.caption("📕 표지")
-            cover_tpl = next((t for t in templates if t['type'] == 'cover'), None)
+            cover_tpl = next((t for t in templates if t.get('type') == 'cover'), None) if templates else None
             if cover_tpl and cover_tpl.get('image_url'):
                 st.image(cover_tpl['image_url'], width=100)
             new_cover = st.file_uploader("표지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_cover_{svc_id}", label_visibility="collapsed")
         with design_cols[1]:
             st.caption("📄 내지")
-            bg_tpl = next((t for t in templates if t['type'] == 'background'), None)
+            bg_tpl = next((t for t in templates if t.get('type') == 'background'), None) if templates else None
             if bg_tpl and bg_tpl.get('image_url'):
                 st.image(bg_tpl['image_url'], width=100)
             new_bg = st.file_uploader("내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_bg_{svc_id}", label_visibility="collapsed")
         with design_cols[2]:
             st.caption("📋 안내지")
-            info_tpl = next((t for t in templates if t['type'] == 'info'), None)
+            info_tpl = next((t for t in templates if t.get('type') == 'info'), None) if templates else None
             if info_tpl and info_tpl.get('image_url'):
                 st.image(info_tpl['image_url'], width=100)
             new_info = st.file_uploader("안내지 변경", type=["jpg","jpeg","png"], key=f"{prefix}_info_{svc_id}", label_visibility="collapsed")
@@ -151,7 +151,7 @@ show_user_info_sidebar()
 st.title("📦 서비스 작업")
 
 user = st.session_state.user
-level = user.get('member_level', 1) if not user['is_admin'] else 3
+level = user.get('member_level', 1) if not user.get('is_admin') else 3
 api_key = get_api_key()
 selected_service = None
 
@@ -171,13 +171,13 @@ if "기성상품" in product_type:
     st.markdown('<span class="section-title">2️⃣ 기성상품 선택</span>', unsafe_allow_html=True)
     admin_services = cached_get_admin_services()
     if admin_services:
-        svc_names = [s['name'] for s in admin_services]
+        svc_names = [s.get('name', '이름없음') for s in admin_services]
         selected_idx = st.selectbox("기성상품 목록", range(len(admin_services)), 
                                    format_func=lambda x: svc_names[x], key="ready_svc")
         selected_service = admin_services[selected_idx]
         if selected_service:
             chapters = cached_get_chapters(selected_service['id'])
-            st.success(f"✅ '{selected_service['name']}' 선택됨 (목차 {len(chapters)}개)")
+            st.success(f"✅ '{selected_service.get('name', '')}' 선택됨 (목차 {len(chapters) if chapters else 0}개)")
     else:
         st.warning("등록된 기성상품이 없습니다.")
 
@@ -220,8 +220,8 @@ elif "개별상품" in product_type:
                 st.markdown(f"""
                 <div class="product-card">
                     <span style="color: #4CAF50; font-weight: bold;">✅</span>
-                    <b style="color: white; margin-left: 8px;">{svc['name']}</b>
-                    <span style="color: #aaa; margin-left: 8px; font-size: 0.85rem;">목차 {len(chapters)}개</span>
+                    <b style="color: white; margin-left: 8px;">{svc.get('name', '')}</b>
+                    <span style="color: #aaa; margin-left: 8px; font-size: 0.85rem;">목차 {len(chapters) if chapters else 0}개</span>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -232,7 +232,8 @@ elif "개별상품" in product_type:
                 # 선택 안된 상품 - 한 줄 컴팩트
                 col_info, col_action = st.columns([5, 1])
                 with col_info:
-                    st.markdown(f"**{svc['name']}** <span style='color:#888; font-size:0.85rem;'>목차 {len(chapters)}개</span>", unsafe_allow_html=True)
+                    ch_count = len(chapters) if chapters else 0
+                    st.markdown(f"**{svc.get('name', '')}** <span style='color:#888; font-size:0.85rem;'>목차 {ch_count}개</span>", unsafe_allow_html=True)
                 with col_action:
                     if st.button("선택", key=f"sel_svc_{svc['id']}", type="primary"):
                         st.session_state.selected_individual_service = svc['id']
@@ -240,7 +241,7 @@ elif "개별상품" in product_type:
                 st.markdown('<div class="thin-divider"></div>', unsafe_allow_html=True)
         
         # 선택된 상품 가져오기
-        if st.session_state.get('selected_individual_service') and 'selected_service' not in dir():
+        if st.session_state.get('selected_individual_service') and selected_service is None:
             for svc in my_services:
                 if svc['id'] == st.session_state.selected_individual_service:
                     selected_service = svc
@@ -603,7 +604,7 @@ else:
             st.session_state.manual_completed = False
             st.session_state.manual_pdf = None
             # 입력 폼 키들도 삭제
-            keys_to_delete = [k for k in st.session_state.keys() if k.startswith('manual_')]
+            keys_to_delete = [k for k in list(st.session_state.keys()) if k.startswith('manual_')]
             for k in keys_to_delete:
                 del st.session_state[k]
             st.rerun()
