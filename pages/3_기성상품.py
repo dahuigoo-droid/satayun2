@@ -105,6 +105,15 @@ with tab1:
                 new_ml = st.number_input("좌측", value=25, min_value=10, max_value=50, key="new_std_ml")
             with mcol4:
                 new_mr = st.number_input("우측", value=25, min_value=10, max_value=50, key="new_std_mr")
+            
+            st.markdown("**🖼️ 이미지 설정**")
+            icol1, icol2, icol3 = st.columns(3)
+            with icol1:
+                new_cover_img = st.file_uploader("표지 이미지", type=['jpg','jpeg','png'], key="new_std_cover")
+            with icol2:
+                new_bg_img = st.file_uploader("내지(배경) 이미지", type=['jpg','jpeg','png'], key="new_std_bg")
+            with icol3:
+                new_info_img = st.file_uploader("안내지 이미지", type=['jpg','jpeg','png'], key="new_std_info")
         
         st.markdown("---")
         
@@ -127,7 +136,10 @@ with tab1:
                         'margin_top': new_mt,
                         'margin_bottom': new_mb,
                         'margin_left': new_ml,
-                        'margin_right': new_mr
+                        'margin_right': new_mr,
+                        'cover_image': new_cover_img.read() if new_cover_img else None,
+                        'bg_image': new_bg_img.read() if new_bg_img else None,
+                        'info_image': new_info_img.read() if new_info_img else None
                     }
                     st.session_state.std_products.append(new_product)
                     st.session_state.std_new_mode = False
@@ -200,6 +212,21 @@ with tab1:
                         edit_ml = st.number_input("좌측", value=product.get('margin_left', 25), key="edit_std_ml")
                     with mcol4:
                         edit_mr = st.number_input("우측", value=product.get('margin_right', 25), key="edit_std_mr")
+                    
+                    st.markdown("**🖼️ 이미지 설정**")
+                    icol1, icol2, icol3 = st.columns(3)
+                    with icol1:
+                        edit_cover_img = st.file_uploader("표지 이미지", type=['jpg','jpeg','png'], key="edit_std_cover")
+                        if product.get('cover_image'):
+                            st.caption("✅ 기존 이미지 있음")
+                    with icol2:
+                        edit_bg_img = st.file_uploader("내지(배경) 이미지", type=['jpg','jpeg','png'], key="edit_std_bg")
+                        if product.get('bg_image'):
+                            st.caption("✅ 기존 이미지 있음")
+                    with icol3:
+                        edit_info_img = st.file_uploader("안내지 이미지", type=['jpg','jpeg','png'], key="edit_std_info")
+                        if product.get('info_image'):
+                            st.caption("✅ 기존 이미지 있음")
                 
                 st.markdown("---")
                 
@@ -220,6 +247,14 @@ with tab1:
                         product['margin_bottom'] = edit_mb
                         product['margin_left'] = edit_ml
                         product['margin_right'] = edit_mr
+                        
+                        # 이미지 업데이트 (새로 업로드한 경우만)
+                        if edit_cover_img:
+                            product['cover_image'] = edit_cover_img.read()
+                        if edit_bg_img:
+                            product['bg_image'] = edit_bg_img.read()
+                        if edit_info_img:
+                            product['info_image'] = edit_info_img.read()
                         
                         st.session_state.std_edit_mode = False
                         st.toast("✅ 수정되었습니다!")
@@ -249,6 +284,25 @@ with tab1:
                         st.text(guideline_preview)
                     else:
                         st.caption("(지침 없음)")
+                
+                # 이미지 상태 표시
+                st.markdown("**🖼️ 이미지**")
+                img_col1, img_col2, img_col3 = st.columns(3)
+                with img_col1:
+                    if product.get('cover_image'):
+                        st.success("✅ 표지")
+                    else:
+                        st.caption("❌ 표지 없음")
+                with img_col2:
+                    if product.get('bg_image'):
+                        st.success("✅ 내지")
+                    else:
+                        st.caption("❌ 내지 없음")
+                with img_col3:
+                    if product.get('info_image'):
+                        st.success("✅ 안내지")
+                    else:
+                        st.caption("❌ 안내지 없음")
                 
                 st.markdown("---")
                 
