@@ -80,9 +80,6 @@ class User(Base):
     # 회원 등급 (기존 호환성 유지)
     member_level = Column(Integer, default=1)
     
-    # ✅ 상품 권한: "기성상품,개별상품,고급상품" 형태로 저장
-    allowed_products = Column(Text, default="기성상품")
-    
     # 상태: pending, approved, suspended
     status = Column(String(20), default="pending")
     
@@ -118,9 +115,6 @@ class Service(Base):
     
     # 서비스 유형: single=1인용, couple=2인용
     service_type = Column(String(20), default="single")
-    
-    # ✅ 상품 유형: 기성상품, 개별상품, 고급상품
-    product_category = Column(String(20), default="기성상품")
     
     # 폰트 설정
     font_family = Column(String(50), default="NanumGothic")

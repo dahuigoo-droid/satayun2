@@ -42,7 +42,6 @@ def register_user(email: str, password: str, name: str) -> dict:
             name=name.strip(),
             is_admin=False,
             member_level=1,
-            allowed_products="기성상품",  # 기본: 기성상품만
             status="pending"
         )
         
@@ -82,8 +81,12 @@ def login_user(email: str, password: str) -> dict:
         user.last_login = datetime.utcnow()
         db.commit()
         
-        # allowed_products 파싱
-        allowed = user.allowed_products or "기성상품"
+        # allowed_products 파싱 (컬럼이 없을 수 있음)
+        try:
+            allowed = getattr(user, 'allowed_products', None) or "기성상품"
+        except:
+            allowed = "기성상품"
+        
         if isinstance(allowed, str):
             allowed_list = [x.strip() for x in allowed.split(",") if x.strip()]
         else:
@@ -130,7 +133,6 @@ def create_first_admin(email: str, password: str, name: str) -> dict:
             name=name.strip(),
             is_admin=True,
             member_level=3,
-            allowed_products="기성상품,개별상품,고급상품",  # 관리자는 모두 가능
             status="approved"
         )
         
@@ -174,8 +176,12 @@ def get_all_users() -> list:
         users = db.query(User).order_by(User.is_admin.desc(), User.created_at.desc()).all()
         result = []
         for u in users:
-            # allowed_products 파싱
-            allowed = u.allowed_products or "기성상품"
+            # allowed_products 파싱 (컬럼이 없을 수 있음)
+            try:
+                allowed = getattr(u, 'allowed_products', None) or "기성상품"
+            except:
+                allowed = "기성상품"
+            
             if isinstance(allowed, str):
                 allowed_list = [x.strip() for x in allowed.split(",") if x.strip()]
             else:
@@ -310,11 +316,14 @@ def update_user_settings(user_id: int, member_level: int = None,
         if email_mode is not None:
             user.email_mode = email_mode
         if allowed_products is not None:
-            # 리스트를 콤마 구분 문자열로 저장
-            if isinstance(allowed_products, list):
-                user.allowed_products = ",".join(allowed_products)
-            else:
-                user.allowed_products = allowed_products
+            # 리스트를 콤마 구분 문자열로 저장 (컬럼이 없으면 무시)
+            try:
+                if isinstance(allowed_products, list):
+                    user.allowed_products = ",".join(allowed_products)
+                else:
+                    user.allowed_products = allowed_products
+            except:
+                pass  # 컬럼이 없으면 무시
         
         db.commit()
         return {"success": True, "message": "설정이 변경되었습니다."}
