@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 🔐 인증 및 사용자 관리
-회원 등급 1/2/3단계 버전
+상품 권한 (allowed_products) 버전
 """
 
 import bcrypt
@@ -41,7 +41,8 @@ def register_user(email: str, password: str, name: str) -> dict:
             password_hash=hash_password(password),
             name=name.strip(),
             is_admin=False,
-            member_level=1,  # 기본: 관리자 상품만 사용
+            member_level=1,
+            allowed_products="기성상품",  # 기본: 기성상품만
             status="pending"
         )
         
@@ -81,6 +82,13 @@ def login_user(email: str, password: str) -> dict:
         user.last_login = datetime.utcnow()
         db.commit()
         
+        # allowed_products 파싱
+        allowed = user.allowed_products or "기성상품"
+        if isinstance(allowed, str):
+            allowed_list = [x.strip() for x in allowed.split(",") if x.strip()]
+        else:
+            allowed_list = ["기성상품"]
+        
         return {
             "success": True,
             "user": {
@@ -89,6 +97,7 @@ def login_user(email: str, password: str) -> dict:
                 "name": user.name,
                 "is_admin": user.is_admin,
                 "member_level": user.member_level,
+                "allowed_products": allowed_list,  # 리스트로 반환
                 "status": user.status,
                 "api_mode": user.api_mode,
                 "email_mode": user.email_mode,
@@ -120,7 +129,8 @@ def create_first_admin(email: str, password: str, name: str) -> dict:
             password_hash=hash_password(password),
             name=name.strip(),
             is_admin=True,
-            member_level=3,  # 관리자는 둘 다 사용
+            member_level=3,
+            allowed_products="기성상품,개별상품,고급상품",  # 관리자는 모두 가능
             status="approved"
         )
         
@@ -162,20 +172,28 @@ def get_all_users() -> list:
     db = SessionLocal()
     try:
         users = db.query(User).order_by(User.is_admin.desc(), User.created_at.desc()).all()
-        return [
-            {
+        result = []
+        for u in users:
+            # allowed_products 파싱
+            allowed = u.allowed_products or "기성상품"
+            if isinstance(allowed, str):
+                allowed_list = [x.strip() for x in allowed.split(",") if x.strip()]
+            else:
+                allowed_list = ["기성상품"]
+            
+            result.append({
                 "id": u.id,
                 "email": u.email,
                 "name": u.name,
                 "is_admin": u.is_admin,
                 "member_level": u.member_level,
+                "allowed_products": allowed_list,
                 "status": u.status,
                 "api_mode": u.api_mode,
                 "email_mode": u.email_mode,
                 "created_at": u.created_at.strftime("%Y-%m-%d") if u.created_at else "",
-            }
-            for u in users
-        ]
+            })
+        return result
     except Exception as e:
         print(f"사용자 조회 오류: {e}")
         return []
@@ -273,7 +291,8 @@ def activate_user(user_id: int) -> dict:
 
 
 def update_user_settings(user_id: int, member_level: int = None, 
-                         api_mode: str = None, email_mode: str = None) -> dict:
+                         api_mode: str = None, email_mode: str = None,
+                         allowed_products: list = None) -> dict:
     """회원 설정 변경 (관리자용)"""
     if not SessionLocal:
         return {"success": False, "error": "데이터베이스 연결 실패"}
@@ -290,6 +309,12 @@ def update_user_settings(user_id: int, member_level: int = None,
             user.api_mode = api_mode
         if email_mode is not None:
             user.email_mode = email_mode
+        if allowed_products is not None:
+            # 리스트를 콤마 구분 문자열로 저장
+            if isinstance(allowed_products, list):
+                user.allowed_products = ",".join(allowed_products)
+            else:
+                user.allowed_products = allowed_products
         
         db.commit()
         return {"success": True, "message": "설정이 변경되었습니다."}

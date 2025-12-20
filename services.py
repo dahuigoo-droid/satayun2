@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 📦 서비스 관리 + 자료실
+상품 유형 (product_category) 버전
 """
 
 from database import SessionLocal, Service, SystemConfig, ChapterLibrary, GuidelineLibrary
@@ -19,6 +20,7 @@ def _service_to_dict(s) -> dict:
         "owner_id": s.owner_id,
         "is_active": s.is_active,
         "service_type": s.service_type or "single",
+        "product_category": getattr(s, 'product_category', None) or "기성상품",  # ✅ 상품 유형
         "font_family": s.font_family or "NanumGothic",
         "font_size_title": s.font_size_title or 24,
         "font_size_subtitle": s.font_size_subtitle or 16,
@@ -54,8 +56,39 @@ def get_all_services(include_inactive=False) -> list:
         db.close()
 
 
+def get_services_by_category(category: str) -> list:
+    """상품 유형별 서비스 조회"""
+    if not SessionLocal:
+        return []
+    
+    db = SessionLocal()
+    try:
+        # product_category 컬럼이 있으면 사용, 없으면 기존 방식
+        try:
+            services = db.query(Service).filter(
+                Service.is_active == True,
+                Service.product_category == category
+            ).order_by(Service.created_at.desc()).all()
+        except:
+            # product_category 컬럼이 없는 경우 (마이그레이션 전)
+            if category == "기성상품":
+                services = db.query(Service).filter(
+                    Service.is_active == True,
+                    Service.owner_id == None
+                ).order_by(Service.created_at.desc()).all()
+            else:
+                services = []
+        
+        return [_service_to_dict(s) for s in services]
+    except Exception as e:
+        print(f"서비스 조회 오류: {e}")
+        return []
+    finally:
+        db.close()
+
+
 def get_admin_services() -> list:
-    """관리자 공용 서비스 조회"""
+    """관리자 공용 서비스 조회 (기존 호환성)"""
     if not SessionLocal:
         return []
     
@@ -74,7 +107,7 @@ def get_admin_services() -> list:
 
 
 def get_user_services(user_id: int) -> list:
-    """특정 사용자의 개별 서비스 조회"""
+    """특정 사용자의 개별 서비스 조회 (기존 호환성)"""
     if not SessionLocal:
         return []
     
@@ -97,7 +130,7 @@ def get_user_services(user_id: int) -> list:
 # ============================================
 
 def add_service(name: str, description: str = "", owner_id: int = None,
-                service_type: str = "single",
+                service_type: str = "single", product_category: str = "기성상품",
                 font_family: str = "NanumGothic", font_size_title: int = 24,
                 font_size_subtitle: int = 16, font_size_body: int = 12,
                 letter_spacing: int = 0, line_height: int = 180,
@@ -132,6 +165,12 @@ def add_service(name: str, description: str = "", owner_id: int = None,
             target_pages=target_pages
         )
         
+        # product_category 설정 (컬럼이 있는 경우)
+        try:
+            new_service.product_category = product_category
+        except:
+            pass
+        
         db.add(new_service)
         db.commit()
         
@@ -144,7 +183,7 @@ def add_service(name: str, description: str = "", owner_id: int = None,
 
 
 def update_service(service_id: int, name: str = None, description: str = None, is_active: bool = None,
-                   service_type: str = None,
+                   service_type: str = None, product_category: str = None,
                    font_family: str = None, font_size_title: int = None, font_size_subtitle: int = None,
                    font_size_body: int = None, letter_spacing: int = None, line_height: int = None,
                    char_width: int = None, margin_top: int = None, margin_bottom: int = None,
@@ -167,6 +206,11 @@ def update_service(service_id: int, name: str = None, description: str = None, i
             service.is_active = is_active
         if service_type is not None:
             service.service_type = service_type
+        if product_category is not None:
+            try:
+                service.product_category = product_category
+            except:
+                pass
         if font_family is not None:
             service.font_family = font_family
         if font_size_title is not None:
@@ -283,7 +327,6 @@ def get_chapter_library(user_id: int = None, category: str = None) -> list:
         query = db.query(ChapterLibrary).filter(ChapterLibrary.is_active == True)
         
         if user_id:
-            # 사용자 것 + 공용
             query = query.filter((ChapterLibrary.user_id == user_id) | (ChapterLibrary.user_id == None))
         
         if category:

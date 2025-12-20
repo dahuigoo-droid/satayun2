@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 🗄️ 데이터베이스 모델 및 연결
-회원 등급 1/2/3단계 버전 + 캐싱 최적화
+상품 유형 (기성/개별/고급) + 상품 권한 버전
 """
 
 import os
@@ -34,24 +34,31 @@ if not DATABASE_URL:
 Base = declarative_base()
 
 # 캐싱된 엔진 생성
-@st.cache_resource
-def get_engine():
-    """DB 엔진 캐싱 - 앱 전체에서 재사용"""
+try:
+    @st.cache_resource
+    def get_engine():
+        """DB 엔진 캐싱 - 앱 전체에서 재사용"""
+        if DATABASE_URL:
+            try:
+                return create_engine(
+                    DATABASE_URL, 
+                    pool_pre_ping=True,
+                    pool_size=5,
+                    max_overflow=10,
+                    pool_recycle=300
+                )
+            except Exception as e:
+                print(f"DB 연결 오류: {e}")
+        return None
+    
+    engine = get_engine() if DATABASE_URL else None
+except:
+    # Streamlit 외부에서 실행 시
     if DATABASE_URL:
-        try:
-            return create_engine(
-                DATABASE_URL, 
-                pool_pre_ping=True,
-                pool_size=5,
-                max_overflow=10,
-                pool_recycle=300
-            )
-        except Exception as e:
-            print(f"DB 연결 오류: {e}")
-    return None
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    else:
+        engine = None
 
-# 전역 변수 (호환성 유지)
-engine = get_engine() if DATABASE_URL else None
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) if engine else None
 
 # ============================================
@@ -67,23 +74,24 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     name = Column(String(100), nullable=False)
     
-    # 관리자 여부: True=관리자, False=일반회원
+    # 관리자 여부
     is_admin = Column(Boolean, default=False)
     
-    # 회원 등급: 1=관리자상품만, 2=개별상품만, 3=둘다
+    # 회원 등급 (기존 호환성 유지)
     member_level = Column(Integer, default=1)
+    
+    # ✅ 상품 권한: "기성상품,개별상품,고급상품" 형태로 저장
+    allowed_products = Column(Text, default="기성상품")
     
     # 상태: pending, approved, suspended
     status = Column(String(20), default="pending")
     
-    # 모드 설정 (관리자가 회원별로 설정)
-    api_mode = Column(String(20), default="unified")      # unified/separated
-    email_mode = Column(String(20), default="unified")    # unified/separated
+    # 모드 설정
+    api_mode = Column(String(20), default="unified")
+    email_mode = Column(String(20), default="unified")
     
-    # API 설정 (분리 모드일 때 사용)
+    # API/이메일 설정
     api_key = Column(Text, nullable=True)
-    
-    # 이메일 설정 (분리 모드일 때 사용)
     gmail_address = Column(String(255), nullable=True)
     gmail_app_password = Column(String(255), nullable=True)
     
@@ -102,23 +110,26 @@ class Service(Base):
     __tablename__ = "services"
     
     id = Column(Integer, primary_key=True, index=True)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL=관리자 공용
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # 서비스 유형: single=1인용, couple=2인용(궁합/재회)
+    # 서비스 유형: single=1인용, couple=2인용
     service_type = Column(String(20), default="single")
     
+    # ✅ 상품 유형: 기성상품, 개별상품, 고급상품
+    product_category = Column(String(20), default="기성상품")
+    
     # 폰트 설정
-    font_family = Column(String(50), default="NanumGothic")  # 폰트 종류
-    font_size_title = Column(Integer, default=24)    # 대제목 크기
-    font_size_subtitle = Column(Integer, default=16) # 소제목 크기
-    font_size_body = Column(Integer, default=12)     # 본문 크기
-    letter_spacing = Column(Integer, default=0)      # 자간 (%)
-    line_height = Column(Integer, default=180)       # 행간 (%)
-    char_width = Column(Integer, default=100)        # 장평 (%)
+    font_family = Column(String(50), default="NanumGothic")
+    font_size_title = Column(Integer, default=24)
+    font_size_subtitle = Column(Integer, default=16)
+    font_size_body = Column(Integer, default=12)
+    letter_spacing = Column(Integer, default=0)
+    line_height = Column(Integer, default=180)
+    char_width = Column(Integer, default=100)
     
     # 여백 설정 (mm)
     margin_top = Column(Integer, default=25)
@@ -172,7 +183,7 @@ class Template(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     service_id = Column(Integer, ForeignKey("services.id", ondelete="CASCADE"), nullable=False)
-    template_type = Column(String(50), nullable=False)  # cover, background, info
+    template_type = Column(String(50), nullable=False)
     name = Column(String(200), nullable=False)
     image_path = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -213,10 +224,10 @@ class ChapterLibrary(Base):
     __tablename__ = "chapter_library"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL=공용
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=True)
-    category = Column(String(50), nullable=True)  # 사주, 타로, 연애 등
+    category = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -227,7 +238,7 @@ class GuidelineLibrary(Base):
     __tablename__ = "guideline_library"
     
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # NULL=공용
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     title = Column(String(200), nullable=False)
     content = Column(Text, nullable=False)
     category = Column(String(50), nullable=True)
@@ -259,3 +270,39 @@ def get_db():
             db.close()
     else:
         yield None
+
+
+# ============================================
+# DB 마이그레이션 (새 컬럼 추가)
+# ============================================
+
+def migrate_db():
+    """새 컬럼 추가 마이그레이션"""
+    if not engine:
+        print("⚠️ DB 연결 없음")
+        return
+    
+    from sqlalchemy import text
+    
+    with engine.connect() as conn:
+        # User 테이블에 allowed_products 컬럼 추가
+        try:
+            conn.execute(text("""
+                ALTER TABLE users 
+                ADD COLUMN IF NOT EXISTS allowed_products TEXT DEFAULT '기성상품'
+            """))
+            conn.commit()
+            print("✅ users.allowed_products 컬럼 추가됨")
+        except Exception as e:
+            print(f"users 마이그레이션: {e}")
+        
+        # Service 테이블에 product_category 컬럼 추가
+        try:
+            conn.execute(text("""
+                ALTER TABLE services 
+                ADD COLUMN IF NOT EXISTS product_category VARCHAR(20) DEFAULT '기성상품'
+            """))
+            conn.commit()
+            print("✅ services.product_category 컬럼 추가됨")
+        except Exception as e:
+            print(f"services 마이그레이션: {e}")
