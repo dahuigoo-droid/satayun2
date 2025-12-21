@@ -336,44 +336,67 @@ def generate_full_content(
     margin_left: int = 25,
     margin_right: int = 25,
     model: str = "gpt-4o-mini",
-    progress_callback: Callable = None
+    progress_callback: Callable = None,
+    max_workers: int = 3  # 🚀 병렬 워커 수
 ) -> List[Dict]:
-    """전체 콘텐츠 생성 - 목표 페이지 반영"""
+    """전체 콘텐츠 생성 - 🚀 병렬 처리"""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    import threading
     
     # 페이지당 글자 수 계산
     chars_per_page = calculate_chars_per_page(
         font_size, line_height, margin_top, margin_bottom, margin_left, margin_right
     )
     
-    # 총 필요 글자 수
-    total_chars_needed = target_pages * chars_per_page
-    
-    # 목차당 필요 글자 수 (표지, 목차, 안내 페이지 제외하고 계산)
-    content_pages = max(target_pages - 3, target_pages * 0.9)  # 본문 페이지
+    # 목차당 필요 글자 수
+    content_pages = max(target_pages - 3, target_pages * 0.9)
     chars_per_chapter = int((content_pages * chars_per_page) / len(chapters))
     
     print(f"[PDF설정] 목표: {target_pages}페이지, 페이지당 {chars_per_page}자")
     print(f"[PDF설정] 목차 {len(chapters)}개, 목차당 {chars_per_chapter}자 목표")
+    print(f"[PDF설정] 🚀 병렬 처리: {max_workers}개 동시 실행")
     
-    full_content = []
     total = len(chapters)
+    results = [None] * total  # 순서 유지
+    completed_count = [0]  # 리스트로 감싸서 클로저에서 수정 가능하게
+    progress_lock = threading.Lock()
     
-    for i, chapter in enumerate(chapters):
-        if progress_callback:
-            progress_callback((i + 1) / total, f"'{chapter}' 작성 중...")
-        
+    def process_chapter(idx: int, chapter: str) -> tuple:
+        """개별 챕터 처리 (스레드에서 실행)"""
         content = generate_chapter_content(
             api_key, customer_info, chapter, guideline, service_type,
-            target_chars=chars_per_chapter,  # 목표 글자 수 전달
+            target_chars=chars_per_chapter,
             model=model
         )
         
-        actual_chars = len(content)
-        print(f"[챕터 {i+1}] '{chapter}': {actual_chars}자 생성 (목표: {chars_per_chapter}자)")
+        # 스레드 안전하게 진행률 업데이트
+        with progress_lock:
+            completed_count[0] += 1
+            if progress_callback:
+                progress_callback(completed_count[0] / total, f"'{chapter}' 완료 ({completed_count[0]}/{total})")
         
-        full_content.append({"title": chapter, "content": content})
+        actual_chars = len(content)
+        print(f"[챕터 {idx+1}] '{chapter}': {actual_chars}자 생성")
+        
+        return idx, {"title": chapter, "content": content}
     
-    return full_content
+    # 🚀 병렬 실행
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {
+            executor.submit(process_chapter, i, ch): i 
+            for i, ch in enumerate(chapters)
+        }
+        
+        for future in as_completed(futures):
+            try:
+                idx, result = future.result()
+                results[idx] = result
+            except Exception as e:
+                idx = futures[future]
+                print(f"[오류] 챕터 {idx+1} 생성 실패: {e}")
+                results[idx] = {"title": chapters[idx], "content": f"[오류: {str(e)}]"}
+    
+    return results
 
 
 # ============================================

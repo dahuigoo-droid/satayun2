@@ -683,9 +683,6 @@ def render_customer_list(config: ProductConfig, customers: list, product: dict):
 # PDF 생성 로직 (최적화)
 # ============================================
 
-import hashlib
-import time
-
 def _generate_order_hash(customer_info: dict, product_id: int) -> str:
     """주문 고유 해시 생성 - 멱등성 보장"""
     key = f"{product_id}_{sorted(customer_info.items())}"
