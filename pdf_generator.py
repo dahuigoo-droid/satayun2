@@ -18,9 +18,12 @@ import requests
 from openai import OpenAI
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from reportlab.platypus import Paragraph, Frame
 
 # ============================================
 # 폰트 등록 (한 번만)
@@ -371,39 +374,63 @@ class PDFGenerator:
         c.showPage()
     
     def _draw_chapter(self, c, chapter, bg_data):
-        """챕터 페이지들"""
+        """챕터 페이지들 - 양쪽 정렬"""
         title = chapter['title']
         content = clean_markdown(chapter['content'])
         
-        # 첫 페이지
+        # 양쪽 정렬 스타일
+        body_style = ParagraphStyle(
+            'BodyText',
+            fontName=self.font_name,
+            fontSize=self.font_size_body,
+            leading=self.line_height,  # 행간
+            alignment=TA_JUSTIFY,      # 양쪽 정렬
+            firstLineIndent=0,
+            leftIndent=0,
+            rightIndent=0,
+            spaceBefore=0,
+            spaceAfter=self.line_height * 0.5,
+            wordWrap='CJK',            # 한글 줄바꿈
+        )
+        
+        # 첫 페이지 - 배경 + 제목
         self._draw_image(c, bg_data, 0, 0, self.width, self.height)
         c.setFont(self.font_name, self.font_size_subtitle)
         c.drawString(self.margin_left, self.height - self.margin_top, f"■ {title}")
         
-        y = self.height - self.margin_top - 40
-        c.setFont(self.font_name, self.font_size_body)
+        # 본문 영역 계산
+        frame_x = self.margin_left
+        frame_y = self.margin_bottom
+        frame_w = self.usable_width
+        frame_h = self.height - self.margin_top - self.margin_bottom - 50  # 제목 공간
         
-        for line in wrap_text_korean(content, self.chars_per_line):
-            if not line.strip():
-                y -= self.line_height * 0.5
-                continue
+        # 문단 분리 후 Paragraph 객체 생성
+        paragraphs = []
+        for para in content.split('\n\n'):
+            para = para.strip()
+            if para:
+                # HTML 특수문자 이스케이프
+                para = para.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                paragraphs.append(Paragraph(para, body_style))
+        
+        # 첫 페이지 Frame
+        current_y = self.height - self.margin_top - 50
+        frame = Frame(frame_x, frame_y, frame_w, current_y - frame_y, 
+                      leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+        
+        # 남은 문단들
+        remaining = frame.addFromList(paragraphs, c)
+        
+        # 넘치는 문단은 다음 페이지로
+        while remaining:
+            c.showPage()
+            self._draw_image(c, bg_data, 0, 0, self.width, self.height)
             
-            if y < self.margin_bottom:
-                c.showPage()
-                self._draw_image(c, bg_data, 0, 0, self.width, self.height)
-                c.setFont(self.font_name, self.font_size_body)
-                y = self.height - self.margin_top
-            
-            if self.char_width != 1.0:
-                c.saveState()
-                c.translate(self.margin_left, y)
-                c.scale(self.char_width, 1)
-                c.drawString(0, 0, line)
-                c.restoreState()
-            else:
-                c.drawString(self.margin_left, y, line)
-            
-            y -= self.line_height
+            # 새 페이지 Frame (제목 없이 전체 영역)
+            frame = Frame(frame_x, frame_y, frame_w, 
+                         self.height - self.margin_top - self.margin_bottom,
+                         leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
+            remaining = frame.addFromList(remaining, c)
         
         c.showPage()
 
