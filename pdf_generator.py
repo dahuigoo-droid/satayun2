@@ -339,9 +339,8 @@ def generate_full_content(
     progress_callback: Callable = None,
     max_workers: int = 3  # 🚀 병렬 워커 수
 ) -> List[Dict]:
-    """전체 콘텐츠 생성 - 🚀 병렬 처리"""
+    """전체 콘텐츠 생성 - 🚀 병렬 처리 + 진행률 표시"""
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    import threading
     
     # 페이지당 글자 수 계산
     chars_per_page = calculate_chars_per_page(
@@ -358,32 +357,26 @@ def generate_full_content(
     
     total = len(chapters)
     results = [None] * total  # 순서 유지
-    completed_count = [0]  # 리스트로 감싸서 클로저에서 수정 가능하게
-    progress_lock = threading.Lock()
     
     def process_chapter(idx: int, chapter: str) -> tuple:
-        """개별 챕터 처리 (스레드에서 실행)"""
+        """개별 챕터 처리 (스레드에서 실행) - UI 업데이트 없음"""
         content = generate_chapter_content(
             api_key, customer_info, chapter, guideline, service_type,
             target_chars=chars_per_chapter,
             model=model
         )
         
-        # 스레드 안전하게 진행률 업데이트
-        with progress_lock:
-            completed_count[0] += 1
-            if progress_callback:
-                progress_callback(completed_count[0] / total, f"'{chapter}' 완료 ({completed_count[0]}/{total})")
-        
         actual_chars = len(content)
         print(f"[챕터 {idx+1}] '{chapter}': {actual_chars}자 생성")
         
         return idx, {"title": chapter, "content": content}
     
-    # 🚀 병렬 실행
+    # 🚀 병렬 실행 + 메인 스레드에서 진행률 업데이트
+    completed_count = 0
+    
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(process_chapter, i, ch): i 
+            executor.submit(process_chapter, i, ch): (i, ch)
             for i, ch in enumerate(chapters)
         }
         
@@ -391,10 +384,24 @@ def generate_full_content(
             try:
                 idx, result = future.result()
                 results[idx] = result
+                
+                # ✅ 메인 스레드에서 진행률 업데이트
+                completed_count += 1
+                if progress_callback:
+                    chapter_name = futures[future][1]
+                    progress_callback(
+                        completed_count / total, 
+                        f"'{chapter_name}' 완료 ({completed_count}/{total})"
+                    )
+                    
             except Exception as e:
-                idx = futures[future]
+                idx, chapter_name = futures[future]
                 print(f"[오류] 챕터 {idx+1} 생성 실패: {e}")
-                results[idx] = {"title": chapters[idx], "content": f"[오류: {str(e)}]"}
+                results[idx] = {"title": chapter_name, "content": f"[오류: {str(e)}]"}
+                
+                completed_count += 1
+                if progress_callback:
+                    progress_callback(completed_count / total, f"'{chapter_name}' 오류")
     
     return results
 
