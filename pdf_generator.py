@@ -400,11 +400,14 @@ def generate_full_content(
 
 
 # ============================================
-# PDF 생성
+# PDF 생성 (Platypus 기반 - 정확한 페이지 수 보장)
 # ============================================
 
+from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Spacer, Image as RLImage, Table, TableStyle
+from reportlab.lib.colors import black, white, grey
+
 class PDFGenerator:
-    """PDF 생성기 - 양쪽 정렬"""
+    """PDF 생성기 - Platypus 기반, 정확한 페이지 수 보장"""
     
     def __init__(
         self,
@@ -425,28 +428,71 @@ class PDFGenerator:
         self.font_size_title = font_size_title
         self.font_size_subtitle = font_size_subtitle
         self.font_size_body = font_size_body
+        self.target_pages = target_pages
         
         # 행간 계산
         self.line_height_ratio = line_height / 100.0
         self.line_height = font_size_body * self.line_height_ratio
         
-        # 여백 (mm → pt) - 1mm = 2.834645669 pt
+        # 여백 (mm → pt)
         self.margin_top = margin_top * mm
         self.margin_bottom = margin_bottom * mm
         self.margin_left = margin_left * mm
         self.margin_right = margin_right * mm
         
-        # 페이지 크기 (A4: 595.27 x 841.89 pt)
+        # 페이지 크기 (A4)
         self.width, self.height = A4
         self.usable_width = self.width - self.margin_left - self.margin_right
         self.usable_height = self.height - self.margin_top - self.margin_bottom
         
-        # 디버깅 로그
-        print(f"[PDF] 페이지: {self.width:.1f} x {self.height:.1f} pt")
-        print(f"[PDF] 여백(pt): 상{self.margin_top:.1f} 하{self.margin_bottom:.1f} 좌{self.margin_left:.1f} 우{self.margin_right:.1f}")
-        print(f"[PDF] 여백(mm): 상{margin_top} 하{margin_bottom} 좌{margin_left} 우{margin_right}")
-        print(f"[PDF] 사용영역: {self.usable_width:.1f} x {self.usable_height:.1f} pt")
-        print(f"[PDF] 본문: {font_size_body}pt, 행간: {self.line_height:.1f}pt ({line_height}%)")
+        # 페이지당 줄 수 계산
+        self.lines_per_page = int(self.usable_height / self.line_height)
+        self.chars_per_line = int(self.usable_width / (self.font_size_body * 0.5))  # 한글 기준
+        self.chars_per_page = self.lines_per_page * self.chars_per_line
+        
+        print(f"[PDF] 목표: {target_pages}페이지")
+        print(f"[PDF] 페이지당: {self.lines_per_page}줄, {self.chars_per_line}자/줄, ~{self.chars_per_page}자")
+        
+        # 스타일 정의
+        self._init_styles()
+    
+    def _init_styles(self):
+        """문단 스타일 초기화"""
+        self.title_style = ParagraphStyle(
+            'ChapterTitle',
+            fontName=self.font_name,
+            fontSize=self.font_size_title,
+            leading=self.font_size_title * 1.5,
+            alignment=TA_CENTER,
+            spaceAfter=30,
+        )
+        
+        self.subtitle_style = ParagraphStyle(
+            'Subtitle',
+            fontName=self.font_name,
+            fontSize=self.font_size_subtitle,
+            leading=self.font_size_subtitle * 1.5,
+            alignment=TA_CENTER,
+            spaceAfter=20,
+        )
+        
+        self.body_style = ParagraphStyle(
+            'BodyText',
+            fontName=self.font_name,
+            fontSize=self.font_size_body,
+            leading=self.line_height,
+            alignment=TA_JUSTIFY,
+            firstLineIndent=self.font_size_body * 2,  # 들여쓰기
+            wordWrap='CJK',
+        )
+        
+        self.toc_style = ParagraphStyle(
+            'TOC',
+            fontName=self.font_name,
+            fontSize=self.font_size_subtitle,
+            leading=self.font_size_subtitle * 2,
+            leftIndent=20,
+        )
     
     def create_pdf(
         self,
@@ -459,156 +505,234 @@ class PDFGenerator:
         info_image: str = None,
         customer_name2: str = None
     ) -> bytes:
-        """PDF 생성"""
+        """PDF 생성 - 정확한 페이지 수 보장"""
         buffer = io.BytesIO()
-        c = canvas.Canvas(buffer, pagesize=A4)
         
-        # 이미지 로드 (캐싱됨)
-        cover_data = load_image_for_pdf(cover_image)
-        intro_data = load_image_for_pdf(intro_image)
-        bg_data = load_image_for_pdf(background_image)
-        info_data = load_image_for_pdf(info_image)
+        # 배경 이미지 로드
+        self.bg_data = load_image_for_pdf(background_image)
+        self.cover_data = load_image_for_pdf(cover_image)
+        self.info_data = load_image_for_pdf(info_image)
         
-        # 1. 표지
-        self._draw_cover(c, cover_data, customer_name, service_type, customer_name2)
+        # SimpleDocTemplate 생성
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            topMargin=self.margin_top,
+            bottomMargin=self.margin_bottom,
+            leftMargin=self.margin_left,
+            rightMargin=self.margin_right
+        )
         
-        # 2. 소개 (있으면)
-        if intro_data:
-            self._draw_full_image(c, intro_data)
+        elements = []
         
-        # 3. 목차 (내지 배경 적용)
-        self._draw_toc(c, chapters_content, bg_data)
+        # 1. 표지 페이지 (Canvas로 직접 그리기)
+        # Platypus에서는 커스텀 Flowable로 구현
+        elements.append(self._create_cover_flowable(customer_name, service_type, customer_name2))
+        elements.append(PageBreak())
         
-        # 4. 본문
-        for chapter in chapters_content:
-            self._draw_chapter(c, chapter, bg_data)
+        # 2. 목차 페이지
+        elements.append(Paragraph("목 차", self.title_style))
+        elements.append(Spacer(1, 30))
+        for i, ch in enumerate(chapters_content):
+            toc_text = f"{i+1}. {ch['title']}"
+            elements.append(Paragraph(toc_text, self.toc_style))
+        elements.append(PageBreak())
         
-        # 5. 안내 (있으면)
-        if info_data:
-            self._draw_full_image(c, info_data)
+        # 3. 본문 - 정확한 페이지 수로 분배
+        content_pages = self.target_pages - 3  # 표지, 목차, 안내지 제외
+        pages_per_chapter = max(1, content_pages // len(chapters_content))
         
-        c.save()
+        for ch_idx, chapter in enumerate(chapters_content):
+            title = chapter['title']
+            content = clean_markdown(chapter['content'])
+            
+            # 챕터 제목
+            elements.append(Paragraph(title, self.title_style))
+            elements.append(Spacer(1, 20))
+            
+            # 컨텐츠를 페이지 단위로 분할
+            content_chunks = self._split_content_to_pages(content, pages_per_chapter)
+            
+            for page_idx, chunk in enumerate(content_chunks):
+                # 본문 추가
+                for para in chunk.split('\n\n'):
+                    if para.strip():
+                        elements.append(Paragraph(para.strip(), self.body_style))
+                        elements.append(Spacer(1, 10))
+                
+                # 마지막 청크가 아니면 페이지 분리
+                if page_idx < len(content_chunks) - 1:
+                    elements.append(PageBreak())
+            
+            # 챕터 끝에 페이지 분리 (마지막 챕터 제외)
+            if ch_idx < len(chapters_content) - 1:
+                elements.append(PageBreak())
+        
+        # 4. 안내 페이지 (있으면)
+        if self.info_data:
+            elements.append(PageBreak())
+            elements.append(self._create_image_flowable(self.info_data))
+        
+        # PDF 빌드 (배경 이미지 콜백)
+        doc.build(elements, onFirstPage=self._add_background, onLaterPages=self._add_background)
+        
         buffer.seek(0)
         return buffer.getvalue()
     
-    def _draw_image(self, c, img_data, x, y, w, h):
-        """이미지 그리기 헬퍼"""
-        if img_data:
+    def _split_content_to_pages(self, content: str, target_pages: int) -> list:
+        """컨텐츠를 목표 페이지 수에 맞게 분할"""
+        if not content:
+            return [""]
+        
+        total_chars = len(content)
+        chars_per_page = max(100, total_chars // target_pages)
+        
+        chunks = []
+        paragraphs = content.split('\n\n')
+        current_chunk = ""
+        
+        for para in paragraphs:
+            if len(current_chunk) + len(para) > chars_per_page and current_chunk:
+                chunks.append(current_chunk.strip())
+                current_chunk = para
+            else:
+                current_chunk += "\n\n" + para if current_chunk else para
+        
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+        
+        # 목표 페이지 수에 맞게 조정
+        while len(chunks) < target_pages and chunks:
+            # 가장 긴 청크를 분할
+            longest_idx = max(range(len(chunks)), key=lambda i: len(chunks[i]))
+            chunk = chunks[longest_idx]
+            mid = len(chunk) // 2
+            
+            # 문단 경계에서 분할
+            split_point = chunk.rfind('\n\n', 0, mid)
+            if split_point == -1:
+                split_point = chunk.rfind('. ', 0, mid)
+            if split_point == -1:
+                split_point = mid
+            
+            part1 = chunk[:split_point].strip()
+            part2 = chunk[split_point:].strip()
+            
+            if part1 and part2:
+                chunks[longest_idx] = part1
+                chunks.insert(longest_idx + 1, part2)
+            else:
+                break
+        
+        return chunks if chunks else [""]
+    
+    def _add_background(self, canvas, doc):
+        """각 페이지에 배경 이미지 추가"""
+        if self.bg_data:
             try:
-                if hasattr(img_data, 'seek'):
-                    img_data.seek(0)
-                c.drawImage(img_data, x, y, width=w, height=h, preserveAspectRatio=False, mask='auto')
+                if hasattr(self.bg_data, 'seek'):
+                    self.bg_data.seek(0)
+                canvas.drawImage(self.bg_data, 0, 0, width=self.width, height=self.height,
+                               preserveAspectRatio=False, mask='auto')
             except:
                 pass
     
-    def _draw_cover(self, c, cover_data, name, service_type, name2=None):
-        """표지 페이지"""
-        self._draw_image(c, cover_data, 0, 0, self.width, self.height)
+    def _create_cover_flowable(self, name, service_type, name2=None):
+        """표지용 Flowable"""
+        from reportlab.platypus import Flowable
         
-        c.setFont(self.font_name, self.font_size_title + 4)
-        name_text = f"{name}  ♥  {name2}" if name2 else f"{name} 님"
-        tw = c.stringWidth(name_text, self.font_name, self.font_size_title + 4)
-        c.drawString((self.width - tw) / 2, self.height * 0.25, name_text)
-        
-        c.setFont(self.font_name, self.font_size_subtitle)
-        tw = c.stringWidth(service_type, self.font_name, self.font_size_subtitle)
-        c.drawString((self.width - tw) / 2, self.height * 0.20, service_type)
-        
-        c.setFont(self.font_name, self.font_size_body)
-        date_text = datetime.now().strftime("%Y년 %m월 %d일")
-        tw = c.stringWidth(date_text, self.font_name, self.font_size_body)
-        c.drawString((self.width - tw) / 2, self.height * 0.15, date_text)
-        
-        c.showPage()
-    
-    def _draw_full_image(self, c, img_data):
-        """전체 이미지 페이지"""
-        self._draw_image(c, img_data, 0, 0, self.width, self.height)
-        c.showPage()
-    
-    def _draw_toc(self, c, chapters, bg_data=None):
-        """목차 페이지 - 내지 배경 적용"""
-        # 내지 배경 이미지
-        self._draw_image(c, bg_data, 0, 0, self.width, self.height)
-        
-        c.setFont(self.font_name, self.font_size_title)
-        c.drawString(self.margin_left, self.height - self.margin_top, "목 차")
-        
-        c.setFont(self.font_name, self.font_size_subtitle)
-        y = self.height - self.margin_top - 60
-        
-        for i, ch in enumerate(chapters):
-            c.drawString(self.margin_left + 10, y, f"{i+1}. {ch['title']}")
-            y -= 35
-            if y < self.margin_bottom:
-                c.showPage()
-                # 다음 페이지에도 배경
-                self._draw_image(c, bg_data, 0, 0, self.width, self.height)
-                c.setFont(self.font_name, self.font_size_subtitle)
-                y = self.height - self.margin_top
-        
-        c.showPage()
-    
-    def _draw_chapter(self, c, chapter, bg_data):
-        """챕터 페이지들 - 양쪽 정렬"""
-        title = chapter['title']
-        content = clean_markdown(chapter['content'])
-        
-        # 양쪽 정렬 스타일
-        body_style = ParagraphStyle(
-            'BodyText',
-            fontName=self.font_name,
-            fontSize=self.font_size_body,
-            leading=self.line_height,  # 행간
-            alignment=TA_JUSTIFY,      # 양쪽 정렬
-            firstLineIndent=0,
-            leftIndent=0,
-            rightIndent=0,
-            spaceBefore=0,
-            spaceAfter=self.line_height * 0.5,
-            wordWrap='CJK',            # 한글 줄바꿈
-        )
-        
-        # 첫 페이지 - 배경 + 제목
-        self._draw_image(c, bg_data, 0, 0, self.width, self.height)
-        c.setFont(self.font_name, self.font_size_subtitle)
-        c.drawString(self.margin_left, self.height - self.margin_top, f"■ {title}")
-        
-        # 본문 영역 계산
-        frame_x = self.margin_left
-        frame_y = self.margin_bottom
-        frame_w = self.usable_width
-        frame_h = self.height - self.margin_top - self.margin_bottom - 50  # 제목 공간
-        
-        # 문단 분리 후 Paragraph 객체 생성
-        paragraphs = []
-        for para in content.split('\n\n'):
-            para = para.strip()
-            if para:
-                # HTML 특수문자 이스케이프
-                para = para.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-                paragraphs.append(Paragraph(para, body_style))
-        
-        # 첫 페이지 Frame
-        current_y = self.height - self.margin_top - 50
-        frame = Frame(frame_x, frame_y, frame_w, current_y - frame_y, 
-                      leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-        
-        # 남은 문단들
-        remaining = frame.addFromList(paragraphs, c)
-        
-        # 넘치는 문단은 다음 페이지로
-        while remaining:
-            c.showPage()
-            self._draw_image(c, bg_data, 0, 0, self.width, self.height)
+        class CoverPage(Flowable):
+            def __init__(self, generator, name, service_type, name2):
+                Flowable.__init__(self)
+                self.gen = generator
+                self.name = name
+                self.service_type = service_type
+                self.name2 = name2
+                self.width = generator.width
+                self.height = generator.height
             
-            # 새 페이지 Frame (제목 없이 전체 영역)
-            frame = Frame(frame_x, frame_y, frame_w, 
-                         self.height - self.margin_top - self.margin_bottom,
-                         leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0)
-            remaining = frame.addFromList(remaining, c)
+            def draw(self):
+                c = self.canv
+                
+                # 표지 이미지
+                if self.gen.cover_data:
+                    try:
+                        if hasattr(self.gen.cover_data, 'seek'):
+                            self.gen.cover_data.seek(0)
+                        c.drawImage(self.gen.cover_data, -self.gen.margin_left, 
+                                  -self.gen.margin_bottom,
+                                  width=self.width, height=self.height,
+                                  preserveAspectRatio=False, mask='auto')
+                    except:
+                        pass
+                
+                # 고객명
+                c.setFont(self.gen.font_name, self.gen.font_size_title + 4)
+                name_text = f"{self.name}  ♥  {self.name2}" if self.name2 else f"{self.name} 님"
+                tw = c.stringWidth(name_text, self.gen.font_name, self.gen.font_size_title + 4)
+                c.drawString((self.width - tw) / 2 - self.gen.margin_left, 
+                           self.height * 0.25 - self.gen.margin_bottom, name_text)
+                
+                # 서비스 유형
+                c.setFont(self.gen.font_name, self.gen.font_size_subtitle)
+                tw = c.stringWidth(self.service_type, self.gen.font_name, self.gen.font_size_subtitle)
+                c.drawString((self.width - tw) / 2 - self.gen.margin_left,
+                           self.height * 0.20 - self.gen.margin_bottom, self.service_type)
+                
+                # 날짜
+                c.setFont(self.gen.font_name, self.gen.font_size_body)
+                date_text = datetime.now().strftime("%Y년 %m월 %d일")
+                tw = c.stringWidth(date_text, self.gen.font_name, self.gen.font_size_body)
+                c.drawString((self.width - tw) / 2 - self.gen.margin_left,
+                           self.height * 0.15 - self.gen.margin_bottom, date_text)
         
-        c.showPage()
+        return CoverPage(self, name, service_type, name2)
+    
+    def _create_image_flowable(self, img_data):
+        """이미지 전체 페이지 Flowable"""
+        from reportlab.platypus import Flowable
+        
+        class FullPageImage(Flowable):
+            def __init__(self, generator, img_data):
+                Flowable.__init__(self)
+                self.gen = generator
+                self.img_data = img_data
+                self.width = generator.width
+                self.height = generator.height
+            
+            def draw(self):
+                if self.img_data:
+                    try:
+                        if hasattr(self.img_data, 'seek'):
+                            self.img_data.seek(0)
+                        self.canv.drawImage(self.img_data, -self.gen.margin_left,
+                                          -self.gen.margin_bottom,
+                                          width=self.width, height=self.height,
+                                          preserveAspectRatio=False, mask='auto')
+                    except:
+                        pass
+        
+        return FullPageImage(self, img_data)
+    
+    # ========================================
+    # 차트 추가 기능 (확장용)
+    # ========================================
+    
+    def add_chart_to_elements(self, elements: list, chart_path: str, width: int = 400, height: int = 300):
+        """Matplotlib 차트를 elements에 추가"""
+        if os.path.exists(chart_path):
+            img = RLImage(chart_path, width=width, height=height)
+            elements.append(img)
+            elements.append(Spacer(1, 20))
+    
+    def create_chart_image(self, fig, filename: str = None) -> str:
+        """Matplotlib Figure를 이미지로 저장"""
+        import tempfile
+        if filename is None:
+            fd, filename = tempfile.mkstemp(suffix='.png')
+            os.close(fd)
+        fig.savefig(filename, dpi=150, bbox_inches='tight', facecolor='white')
+        return filename
 
 
 # ============================================
