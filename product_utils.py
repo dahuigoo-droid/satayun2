@@ -379,7 +379,7 @@ def render_product_detail(config: ProductConfig, product: dict):
                                             key=f"{prefix}_edit_lh")
             with dcol6:
                 edit_pages = st.number_input("목표 페이지", value=product.get('target_pages', 30),
-                                            min_value=1, max_value=500, key=f"{prefix}_edit_pages")
+                                            min_value=10, max_value=200, key=f"{prefix}_edit_pages")
             
             st.markdown("**📐 여백 (mm)**")
             mcol1, mcol2, mcol3, mcol4 = st.columns(4)
@@ -391,12 +391,76 @@ def render_product_detail(config: ProductConfig, product: dict):
                 edit_ml = st.number_input("좌측", value=product.get('margin_left', 25), key=f"{prefix}_edit_ml")
             with mcol4:
                 edit_mr = st.number_input("우측", value=product.get('margin_right', 25), key=f"{prefix}_edit_mr")
+            
+            # ======= 📊 예상 페이지 계산기 =======
+            st.markdown("---")
+            st.markdown("**📊 예상 결과 계산**")
+            
+            # 현재 입력값으로 계산
+            cur_body = edit_body_size
+            cur_lh = edit_line_height
+            cur_mt = edit_mt
+            cur_mb = edit_mb
+            cur_ml = edit_ml
+            cur_mr = edit_mr
+            cur_pages = edit_pages
+            
+            # 페이지당 글자 수 계산
+            page_width_mm = 210
+            page_height_mm = 297
+            usable_width_mm = page_width_mm - cur_ml - cur_mr
+            usable_height_mm = page_height_mm - cur_mt - cur_mb
+            
+            char_width_mm = cur_body * 0.35
+            line_height_mm = cur_body * 0.35 * (cur_lh / 100)
+            
+            chars_per_line = int(usable_width_mm / char_width_mm)
+            lines_per_page = int(usable_height_mm / line_height_mm)
+            chars_per_page = int(chars_per_line * lines_per_page * 0.75)
+            
+            calc_col1, calc_col2 = st.columns(2)
+            with calc_col1:
+                st.info(f"""
+**현재 설정 기준:**
+- 한 줄: 약 **{chars_per_line}자**
+- 한 페이지: 약 **{lines_per_page}줄**
+- 페이지당: 약 **{chars_per_page:,}자**
+                """)
+            with calc_col2:
+                total_chars = cur_pages * chars_per_page
+                num_chapters = len(chapters) if chapters else 5
+                st.success(f"""
+**{cur_pages}페이지 목표:**
+- 필요 글자 수: **{total_chars:,}자**
+- 현재 목차 {num_chapters}개 기준:
+- 목차당 **{total_chars//num_chapters:,}자**
+                """)
         else:
-            # 읽기 전용
+            # 읽기 전용 - 계산 결과도 표시
             st.caption(f"폰트: {FONT_OPTIONS.get(product.get('font_family', 'NanumGothic'), '나눔고딕')}")
             st.caption(f"글자 크기: 대제목 {product.get('font_size_title', 24)}pt / 소제목 {product.get('font_size_subtitle', 16)}pt / 본문 {product.get('font_size_body', 12)}pt")
             st.caption(f"행간: {product.get('line_height', 180)}% / 목표: {product.get('target_pages', 30)}페이지")
             st.caption(f"여백: 상{product.get('margin_top', 25)} 하{product.get('margin_bottom', 25)} 좌{product.get('margin_left', 25)} 우{product.get('margin_right', 25)}mm")
+            
+            # 읽기 전용에서도 예상 계산 표시
+            st.markdown("---")
+            cur_body = product.get('font_size_body', 12)
+            cur_lh = product.get('line_height', 180)
+            cur_pages = product.get('target_pages', 30)
+            cur_ml = product.get('margin_left', 25)
+            cur_mr = product.get('margin_right', 25)
+            cur_mt = product.get('margin_top', 25)
+            cur_mb = product.get('margin_bottom', 25)
+            
+            usable_w = 210 - cur_ml - cur_mr
+            usable_h = 297 - cur_mt - cur_mb
+            cpl = int(usable_w / (cur_body * 0.35))
+            lpp = int(usable_h / (cur_body * 0.35 * cur_lh / 100))
+            cpp = int(cpl * lpp * 0.75)
+            total = cur_pages * cpp
+            num_ch = len(chapters) if chapters else 5
+            
+            st.caption(f"📊 예상: 페이지당 ~{cpp}자 / 총 {total:,}자 필요 / 목차당 ~{total//num_ch:,}자")
     
     # ========== 이미지 ==========
     st.markdown("**🖼️ 이미지**")
