@@ -196,6 +196,13 @@ def generate_chapter_content(
         client = _get_openai_client(api_key)
         customer_str = "\n".join([f"- {k}: {v}" for k, v in customer_info.items() if v])
         
+        # 목표 글자 수가 너무 크면 분할 생성
+        if target_chars > 1500:
+            return _generate_long_chapter(
+                client, customer_str, chapter_title, guideline, 
+                service_type, target_chars, model
+            )
+        
         prompt = f"""[서비스 유형]
 {service_type}
 
@@ -208,25 +215,23 @@ def generate_chapter_content(
 [현재 작성할 챕터]
 {chapter_title}
 
-[중요 - 글자 수 요구사항]
-이 챕터는 반드시 {target_chars}자 이상 작성해주세요.
-충분히 상세하고 풍부한 내용으로 작성해야 합니다.
+[필수 요구사항]
+- 반드시 {target_chars}자 이상 작성
+- 최소 {target_chars}자, 최대 {target_chars + 500}자
+- 충분히 상세하고 풍부하게 작성
 
-위 챕터를 상세하게 작성해주세요.
-- 전문적이면서도 이해하기 쉽게
-- 구체적인 조언과 예시 포함
-- 따뜻하고 희망적인 톤 유지
-- 마크다운 문법 사용하지 말고 일반 텍스트로 작성
-- 챕터 제목은 다시 쓰지 마세요
-- 최소 {target_chars}자 이상 필수!"""
+위 챕터를 전문적이면서도 이해하기 쉽게 작성해주세요.
+구체적인 조언과 예시를 포함하고, 따뜻하고 희망적인 톤을 유지하세요.
+마크다운 문법 없이 일반 텍스트로 작성하세요.
+챕터 제목은 다시 쓰지 마세요."""
         
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": f"당신은 전문적이고 따뜻한 {service_type} 전문가입니다. 마크다운 없이 일반 텍스트로만 답변하세요. 요청된 글자 수를 반드시 충족해야 합니다."},
+                {"role": "system", "content": f"당신은 전문적이고 따뜻한 {service_type} 전문가입니다. 요청된 글자 수를 반드시 충족해야 합니다. 마크다운 없이 일반 텍스트로만 답변하세요."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=4000,  # 더 긴 응답 허용
+            max_tokens=6000,
             temperature=0.7
         )
         
@@ -234,6 +239,71 @@ def generate_chapter_content(
     
     except Exception as e:
         return f"[오류: {str(e)}]"
+
+
+def _generate_long_chapter(
+    client,
+    customer_str: str,
+    chapter_title: str,
+    guideline: str,
+    service_type: str,
+    target_chars: int,
+    model: str
+) -> str:
+    """긴 챕터를 여러 부분으로 나눠서 생성"""
+    parts = []
+    chars_per_part = 1200  # 한 번에 생성할 글자 수
+    num_parts = max(2, (target_chars // chars_per_part) + 1)
+    
+    part_names = ["도입부", "본론 1", "본론 2", "본론 3", "결론"][:num_parts]
+    
+    for i, part_name in enumerate(part_names):
+        is_first = (i == 0)
+        is_last = (i == len(part_names) - 1)
+        
+        if is_first:
+            context = "챕터의 시작 부분입니다. 주제를 소개하고 전체 내용을 이끌어가세요."
+        elif is_last:
+            context = "챕터의 마무리 부분입니다. 핵심 내용을 정리하고 따뜻한 조언으로 마무리하세요."
+        else:
+            context = f"챕터의 중간 부분({part_name})입니다. 구체적인 내용과 예시를 상세히 설명하세요."
+        
+        prompt = f"""[서비스 유형]
+{service_type}
+
+[고객 정보]
+{customer_str}
+
+[작성 지침]
+{guideline}
+
+[현재 작성할 챕터]
+{chapter_title}
+
+[현재 작성할 부분]
+{part_name} - {context}
+
+[필수 요구사항]
+- 이 부분만 {chars_per_part}자 이상 작성
+- 자연스럽게 이어지도록 작성
+- 마크다운 없이 일반 텍스트로 작성
+- 챕터 제목이나 부분 제목은 쓰지 마세요"""
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": f"당신은 {service_type} 전문가입니다. 요청된 글자 수를 반드시 충족하세요."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=4000,
+            temperature=0.7
+        )
+        
+        part_content = clean_markdown(response.choices[0].message.content)
+        parts.append(part_content)
+        print(f"  [{part_name}] {len(part_content)}자 생성")
+    
+    return "\n\n".join(parts)
 
 
 def generate_full_content(
