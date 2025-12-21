@@ -471,8 +471,9 @@ def render_product_detail(config: ProductConfig, product: dict):
         if cover_img:
             try:
                 st.image(cover_img, width=100)
-            except:
-                st.caption("(로드 실패)")
+            except Exception as e:
+                st.caption(f"(로드 실패)")
+                st.caption(f"경로: {cover_img[:50]}..." if len(str(cover_img)) > 50 else f"경로: {cover_img}")
         else:
             st.caption("없음")
         if edit_mode:
@@ -483,8 +484,9 @@ def render_product_detail(config: ProductConfig, product: dict):
         if bg_img:
             try:
                 st.image(bg_img, width=100)
-            except:
-                st.caption("(로드 실패)")
+            except Exception as e:
+                st.caption(f"(로드 실패)")
+                st.caption(f"경로: {bg_img[:50]}..." if len(str(bg_img)) > 50 else f"경로: {bg_img}")
         else:
             st.caption("없음")
         if edit_mode:
@@ -495,8 +497,9 @@ def render_product_detail(config: ProductConfig, product: dict):
         if info_img:
             try:
                 st.image(info_img, width=100)
-            except:
-                st.caption("(로드 실패)")
+            except Exception as e:
+                st.caption(f"(로드 실패)")
+                st.caption(f"경로: {info_img[:50]}..." if len(str(info_img)) > 50 else f"경로: {info_img}")
         else:
             st.caption("없음")
         if edit_mode:
