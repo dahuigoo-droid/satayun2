@@ -495,15 +495,15 @@ def render_customer_list(config: ProductConfig, customers: list, product: dict):
     # 선택 버튼들
     bcol1, bcol2, bcol3 = st.columns([1, 1, 1])
     with bcol1:
-        if st.button("✅ 전체 선택", use_container_width=True, key=f"{prefix}_sel_all"):
+        if st.button("✅ 전체 선택", use_container_width=True, key=f"{prefix}_sel_all_{rc}"):
             st.session_state[f'{prefix}_selected'] = set(range(total))
             st.rerun()
     with bcol2:
-        if st.button("⬜ 전체 해제", use_container_width=True, key=f"{prefix}_desel_all"):
+        if st.button("⬜ 전체 해제", use_container_width=True, key=f"{prefix}_desel_all_{rc}"):
             st.session_state[f'{prefix}_selected'] = set()
             st.rerun()
     with bcol3:
-        if st.button("🔄 초기화", use_container_width=True, key=f"{prefix}_reset_btn"):
+        if st.button("🔄 초기화", use_container_width=True, key=f"{prefix}_reset_btn_{rc}"):
             st.session_state[f'{prefix}_customers'] = []
             st.session_state[f'{prefix}_selected'] = set()
             st.session_state[f'{prefix}_progress'] = {}
@@ -514,19 +514,24 @@ def render_customer_list(config: ProductConfig, customers: list, product: dict):
     
     st.markdown("---")
     
-    # 고객 목록
+    # 고객 목록 - 체크박스를 value 기반으로 동기화
     for idx, cust in enumerate(customers):
         col_chk, col_name, col_prog, col_dl = st.columns([0.5, 2, 2, 1])
         
         with col_chk:
-            checked = idx in selected
-            def toggle(i):
-                if i in st.session_state[f'{prefix}_selected']:
-                    st.session_state[f'{prefix}_selected'].discard(i)
-                else:
-                    st.session_state[f'{prefix}_selected'].add(i)
-            st.checkbox("", value=checked, key=f"chk_{prefix}_{idx}_{rc}", 
-                       label_visibility="collapsed", on_change=toggle, args=(idx,))
+            # 세션 상태와 동기화된 체크박스
+            is_selected = idx in st.session_state[f'{prefix}_selected']
+            checked = st.checkbox(
+                "", 
+                value=is_selected,
+                key=f"chk_{prefix}_{idx}_{rc}",
+                label_visibility="collapsed"
+            )
+            # 체크 상태 변경 시 세션 업데이트
+            if checked and idx not in st.session_state[f'{prefix}_selected']:
+                st.session_state[f'{prefix}_selected'].add(idx)
+            elif not checked and idx in st.session_state[f'{prefix}_selected']:
+                st.session_state[f'{prefix}_selected'].discard(idx)
         
         with col_name:
             name = cust.get('이름', cust.get('고객명', f'고객{idx+1}'))
@@ -535,6 +540,8 @@ def render_customer_list(config: ProductConfig, customers: list, product: dict):
         with col_prog:
             prog = st.session_state[f'{prefix}_progress'].get(idx, 0)
             st.progress(prog / 100)
+            if idx in st.session_state[f'{prefix}_completed']:
+                st.caption("✅ 완료")
         
         with col_dl:
             if idx in st.session_state[f'{prefix}_completed']:
@@ -543,7 +550,7 @@ def render_customer_list(config: ProductConfig, customers: list, product: dict):
                     st.download_button(
                         "📥", data=pdfs[idx]['pdf'],
                         file_name=f"{pdfs[idx]['name']}_{product['name']}.pdf",
-                        mime="application/pdf", key=f"dl_{prefix}_{idx}"
+                        mime="application/pdf", key=f"dl_{prefix}_{idx}_{rc}"
                     )
 
 
@@ -606,15 +613,30 @@ def generate_pdfs(config: ProductConfig, customers: list, product: dict) -> bool
         )
         
         generated_pdfs = {}
+        total_chapters = len(chapter_titles)
+        selected_list = list(selected)  # set을 list로 변환
         
-        for i, idx in enumerate(selected):
+        for i, idx in enumerate(selected_list):
             cust = customers[idx]
             name = cust.get('이름', cust.get('고객명', f'고객{idx+1}'))
-            status.text(f"⏳ {name}님 콘텐츠 생성 중... ({i+1}/{selected_count})")
             
-            def progress_cb(prog, msg):
-                st.session_state[f'{prefix}_progress'][idx] = int(prog * 80)
-                bar.progress((i + prog * 0.8) / selected_count)
+            # 고객별 기본 진행률 (0~100)
+            base_progress = int((i / selected_count) * 100)
+            customer_weight = 100 / selected_count  # 고객 1명당 차지하는 %
+            
+            def progress_cb(chapter_prog, msg):
+                # chapter_prog: 0.0 ~ 1.0 (목차 진행률)
+                # 고객별 진행률: 콘텐츠 생성 90%, PDF 생성 10%
+                content_progress = int(chapter_prog * 90)
+                st.session_state[f'{prefix}_progress'][idx] = content_progress
+                
+                # 전체 진행률 계산 (1% 단위)
+                overall = base_progress + int(chapter_prog * customer_weight * 0.9)
+                bar.progress(min(overall / 100, 0.99))
+                
+                # 상세 상태 표시
+                current_chapter = int(chapter_prog * total_chapters)
+                status.text(f"⏳ {name}님 ({i+1}/{selected_count}) - {current_chapter}/{total_chapters}장 생성 중... [{overall}%]")
             
             contents = generate_full_content(
                 api_key=api_key,
@@ -625,7 +647,11 @@ def generate_pdfs(config: ProductConfig, customers: list, product: dict) -> bool
                 progress_callback=progress_cb
             )
             
-            status.text(f"📄 {name}님 PDF 생성 중... ({i+1}/{selected_count})")
+            # PDF 생성 단계 (90% → 100%)
+            st.session_state[f'{prefix}_progress'][idx] = 95
+            pdf_progress = base_progress + int(customer_weight * 0.95)
+            bar.progress(min(pdf_progress / 100, 0.99))
+            status.text(f"📄 {name}님 PDF 변환 중... [{pdf_progress}%]")
             
             pdf_bytes = pdf_gen.create_pdf(
                 chapters_content=contents,
@@ -639,11 +665,15 @@ def generate_pdfs(config: ProductConfig, customers: list, product: dict) -> bool
             generated_pdfs[idx] = {'name': name, 'pdf': pdf_bytes}
             st.session_state[f'{prefix}_progress'][idx] = 100
             st.session_state[f'{prefix}_completed'].add(idx)
-            bar.progress((i + 1) / selected_count)
+            
+            # 고객 완료
+            complete_progress = int(((i + 1) / selected_count) * 100)
+            bar.progress(complete_progress / 100)
+            status.text(f"✅ {name}님 완료! [{complete_progress}%]")
         
         st.session_state[f'{prefix}_pdfs'] = generated_pdfs
         bar.progress(1.0)
-        status.text(f"✅ {selected_count}명 PDF 생성 완료!")
+        status.text(f"✅ {selected_count}명 PDF 생성 완료! [100%]")
         st.balloons()
         st.rerun()
     
