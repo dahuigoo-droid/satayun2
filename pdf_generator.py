@@ -655,8 +655,12 @@ class PDFGenerator:
                 self.name = name
                 self.service_type = service_type
                 self.name2 = name2
-                self.width = generator.width
-                self.height = generator.height
+                self._width = generator.usable_width
+                self._height = generator.usable_height
+            
+            def wrap(self, availWidth, availHeight):
+                """Flowable 크기 반환 - 필수!"""
+                return (self._width, self._height)
             
             def draw(self):
                 c = self.canv
@@ -668,7 +672,7 @@ class PDFGenerator:
                             self.gen.cover_data.seek(0)
                         c.drawImage(self.gen.cover_data, -self.gen.margin_left, 
                                   -self.gen.margin_bottom,
-                                  width=self.width, height=self.height,
+                                  width=self.gen.width, height=self.gen.height,
                                   preserveAspectRatio=False, mask='auto')
                     except:
                         pass
@@ -677,21 +681,21 @@ class PDFGenerator:
                 c.setFont(self.gen.font_name, self.gen.font_size_title + 4)
                 name_text = f"{self.name}  ♥  {self.name2}" if self.name2 else f"{self.name} 님"
                 tw = c.stringWidth(name_text, self.gen.font_name, self.gen.font_size_title + 4)
-                c.drawString((self.width - tw) / 2 - self.gen.margin_left, 
-                           self.height * 0.25 - self.gen.margin_bottom, name_text)
+                c.drawString((self.gen.width - tw) / 2 - self.gen.margin_left, 
+                           self.gen.height * 0.25 - self.gen.margin_bottom, name_text)
                 
                 # 서비스 유형
                 c.setFont(self.gen.font_name, self.gen.font_size_subtitle)
                 tw = c.stringWidth(self.service_type, self.gen.font_name, self.gen.font_size_subtitle)
-                c.drawString((self.width - tw) / 2 - self.gen.margin_left,
-                           self.height * 0.20 - self.gen.margin_bottom, self.service_type)
+                c.drawString((self.gen.width - tw) / 2 - self.gen.margin_left,
+                           self.gen.height * 0.20 - self.gen.margin_bottom, self.service_type)
                 
                 # 날짜
                 c.setFont(self.gen.font_name, self.gen.font_size_body)
                 date_text = datetime.now().strftime("%Y년 %m월 %d일")
                 tw = c.stringWidth(date_text, self.gen.font_name, self.gen.font_size_body)
-                c.drawString((self.width - tw) / 2 - self.gen.margin_left,
-                           self.height * 0.15 - self.gen.margin_bottom, date_text)
+                c.drawString((self.gen.width - tw) / 2 - self.gen.margin_left,
+                           self.gen.height * 0.15 - self.gen.margin_bottom, date_text)
         
         return CoverPage(self, name, service_type, name2)
     
@@ -704,8 +708,12 @@ class PDFGenerator:
                 Flowable.__init__(self)
                 self.gen = generator
                 self.img_data = img_data
-                self.width = generator.width
-                self.height = generator.height
+                self._width = generator.usable_width
+                self._height = generator.usable_height
+            
+            def wrap(self, availWidth, availHeight):
+                """Flowable 크기 반환 - 필수!"""
+                return (self._width, self._height)
             
             def draw(self):
                 if self.img_data:
@@ -714,7 +722,7 @@ class PDFGenerator:
                             self.img_data.seek(0)
                         self.canv.drawImage(self.img_data, -self.gen.margin_left,
                                           -self.gen.margin_bottom,
-                                          width=self.width, height=self.height,
+                                          width=self.gen.width, height=self.gen.height,
                                           preserveAspectRatio=False, mask='auto')
                     except:
                         pass
