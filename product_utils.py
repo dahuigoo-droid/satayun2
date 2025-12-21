@@ -127,10 +127,7 @@ def render_design_settings(prefix: str, expanded: bool = False, defaults: dict =
         defaults = {}
     
     with st.expander("🎨 디자인 설정", expanded=expanded):
-        st.markdown("**📄 목표 페이지**")
-        new_pages = st.number_input("페이지 수", value=defaults.get('target_pages', 30), 
-                                    min_value=1, max_value=500, key=f"{prefix}_pages")
-        
+        # 폰트 설정
         st.markdown("**🔤 폰트 설정**")
         fcol1, fcol2, fcol3, fcol4 = st.columns(4)
         with fcol1:
@@ -148,10 +145,16 @@ def render_design_settings(prefix: str, expanded: bool = False, defaults: dict =
             new_body = st.number_input("본문", value=defaults.get('font_size_body', 12),
                                        min_value=8, max_value=20, key=f"{prefix}_body_size")
         
-        # 행간만 표시 (자간/장평은 양쪽정렬에서 미지원)
-        new_line_height = st.slider("행간 %", 100, 300, defaults.get('line_height', 180),
-                                    key=f"{prefix}_lh")
+        # 행간 & 목표 페이지
+        hcol1, hcol2 = st.columns(2)
+        with hcol1:
+            new_line_height = st.slider("행간 %", 100, 300, defaults.get('line_height', 180),
+                                        key=f"{prefix}_lh")
+        with hcol2:
+            new_pages = st.number_input("목표 페이지", value=defaults.get('target_pages', 30), 
+                                        min_value=10, max_value=200, key=f"{prefix}_pages")
         
+        # 여백 설정
         st.markdown("**📐 여백 (mm)**")
         mcol1, mcol2, mcol3, mcol4 = st.columns(4)
         with mcol1:
@@ -163,6 +166,59 @@ def render_design_settings(prefix: str, expanded: bool = False, defaults: dict =
         with mcol4:
             new_mr = st.number_input("우측", value=defaults.get('margin_right', 25), key=f"{prefix}_mr")
         
+        # ======= 📊 예상 페이지 계산기 =======
+        st.markdown("---")
+        st.markdown("**📊 예상 결과 계산**")
+        
+        # 페이지당 글자 수 계산
+        page_width_mm = 210
+        page_height_mm = 297
+        usable_width_mm = page_width_mm - new_ml - new_mr
+        usable_height_mm = page_height_mm - new_mt - new_mb
+        
+        char_width_mm = new_body * 0.35  # 한글 기준
+        line_height_mm = new_body * 0.35 * (new_line_height / 100)
+        
+        chars_per_line = int(usable_width_mm / char_width_mm)
+        lines_per_page = int(usable_height_mm / line_height_mm)
+        chars_per_page = int(chars_per_line * lines_per_page * 0.75)  # 여유 25%
+        
+        # 예상 정보 표시
+        calc_col1, calc_col2 = st.columns(2)
+        with calc_col1:
+            st.info(f"""
+**현재 설정 기준:**
+- 한 줄: 약 **{chars_per_line}자**
+- 한 페이지: 약 **{lines_per_page}줄**
+- 페이지당: 약 **{chars_per_page:,}자**
+            """)
+        with calc_col2:
+            total_chars = new_pages * chars_per_page
+            st.success(f"""
+**{new_pages}페이지 목표:**
+- 필요 글자 수: **{total_chars:,}자**
+- 목차 5개 기준: 목차당 **{total_chars//5:,}자**
+- 목차 10개 기준: 목차당 **{total_chars//10:,}자**
+            """)
+        
+        # 참고 가이드
+        with st.expander("💡 설정 가이드", expanded=False):
+            st.markdown("""
+| 본문 크기 | 여백 25mm | 행간 180% | 페이지당 글자 |
+|----------|----------|----------|-------------|
+| 12pt | 25mm | 180% | ~850자 |
+| 14pt | 25mm | 180% | ~620자 |
+| 16pt | 25mm | 180% | ~480자 |
+| 17pt | 25mm | 180% | ~420자 |
+
+**팁:**
+- 본문 크기 ↑ → 페이지당 글자 수 ↓ → 더 많은 페이지
+- 여백 ↑ → 페이지당 글자 수 ↓
+- 행간 ↑ → 페이지당 줄 수 ↓
+            """)
+        
+        # 이미지 설정
+        st.markdown("---")
         st.markdown("**🖼️ 이미지**")
         icol1, icol2, icol3 = st.columns(3)
         with icol1:
@@ -644,6 +700,13 @@ def generate_pdfs(config: ProductConfig, customers: list, product: dict) -> bool
                 chapters=chapter_titles,
                 guideline=guideline_text,
                 service_type=product['name'],
+                target_pages=product.get('target_pages', 30),
+                font_size=product.get('font_size_body', 12),
+                line_height=product.get('line_height', 180),
+                margin_top=product.get('margin_top', 25),
+                margin_bottom=product.get('margin_bottom', 25),
+                margin_left=product.get('margin_left', 25),
+                margin_right=product.get('margin_right', 25),
                 progress_callback=progress_cb
             )
             
