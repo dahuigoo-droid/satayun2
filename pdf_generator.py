@@ -59,12 +59,15 @@ _register_fonts()
 
 
 # ============================================
-# 이미지 캐싱 (LRU)
+# 이미지 캐싱 (세션 + LRU 이중 캐싱)
 # ============================================
+
+# 세션 레벨 이미지 캐시
+_session_image_cache: Dict[str, bytes] = {}
 
 @lru_cache(maxsize=50)
 def _download_image(url: str) -> Optional[bytes]:
-    """URL에서 이미지 다운로드 (캐싱)"""
+    """URL에서 이미지 다운로드 (LRU 캐싱)"""
     try:
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
@@ -75,14 +78,20 @@ def _download_image(url: str) -> Optional[bytes]:
 
 
 def load_image_for_pdf(image_path: str) -> Optional[io.BytesIO]:
-    """이미지 로드 - URL/로컬 모두 지원, 캐싱 적용"""
+    """이미지 로드 - 세션 캐싱 + LRU 캐싱 이중 적용"""
     if not image_path:
         return None
     
     # URL인 경우
     if image_path.startswith("http"):
+        # 1차: 세션 캐시 확인 (가장 빠름)
+        if image_path in _session_image_cache:
+            return io.BytesIO(_session_image_cache[image_path])
+        
+        # 2차: LRU 캐시에서 다운로드
         content = _download_image(image_path)
         if content:
+            _session_image_cache[image_path] = content  # 세션 캐시에 저장
             return io.BytesIO(content)
         return None
     
@@ -91,6 +100,13 @@ def load_image_for_pdf(image_path: str) -> Optional[io.BytesIO]:
         return image_path
     
     return None
+
+
+def clear_image_cache():
+    """이미지 캐시 초기화"""
+    global _session_image_cache
+    _session_image_cache.clear()
+    _download_image.cache_clear()
 
 
 # ============================================

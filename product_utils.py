@@ -8,6 +8,8 @@
 """
 
 import streamlit as st
+import hashlib
+import time
 from typing import Callable, List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
@@ -678,11 +680,20 @@ def render_customer_list(config: ProductConfig, customers: list, product: dict):
 
 
 # ============================================
-# PDF 생성 로직
+# PDF 생성 로직 (최적화)
 # ============================================
 
+import hashlib
+import time
+
+def _generate_order_hash(customer_info: dict, product_id: int) -> str:
+    """주문 고유 해시 생성 - 멱등성 보장"""
+    key = f"{product_id}_{sorted(customer_info.items())}"
+    return hashlib.md5(key.encode()).hexdigest()[:12]
+
+
 def generate_pdfs(config: ProductConfig, customers: list, product: dict) -> bool:
-    """선택된 고객들의 PDF 생성"""
+    """선택된 고객들의 PDF 생성 - 최적화 버전"""
     prefix = config.prefix
     selected = st.session_state[f'{prefix}_selected']
     
@@ -692,119 +703,168 @@ def generate_pdfs(config: ProductConfig, customers: list, product: dict) -> bool
     
     selected_count = len(selected)
     
+    # 🔒 리런 차단: 이미 처리 중인지 확인
+    processing_key = f'{prefix}_processing'
+    if st.session_state.get(processing_key, False):
+        st.warning("⏳ PDF 생성 중입니다. 잠시만 기다려주세요...")
+        return False
+    
     if st.button(f"🚀 PDF 생성 ({selected_count}명)", type="primary", use_container_width=True):
-        # API 키 확인
-        api_key = get_system_config(ConfigKeys.ADMIN_API_KEY, "")
-        if not api_key:
-            st.error("⚠️ API 키가 설정되지 않았습니다.")
-            return False
+        # 🔒 처리 시작 플래그
+        st.session_state[processing_key] = True
+        start_time = time.time()
         
-        # 상품 정보
-        chapters = get_chapters_by_service(product['id'])
-        guidelines = get_guidelines_by_service(product['id'])
-        templates = get_templates_by_service(product['id'])
-        
-        if not chapters:
-            st.error("⚠️ 목차가 없습니다.")
-            return False
-        
-        chapter_titles = [c['title'] for c in chapters]
-        guideline_text = guidelines[0]['content'] if guidelines else ""
-        
-        # 이미지 경로
-        cover_img = next((t['image_path'] for t in templates if t['template_type'] == 'cover'), None)
-        bg_img = next((t['image_path'] for t in templates if t['template_type'] == 'background'), None)
-        info_img = next((t['image_path'] for t in templates if t['template_type'] == 'info'), None)
-        
-        bar = st.progress(0)
-        status = st.empty()
-        
-        # PDF 생성기
-        pdf_gen = PDFGenerator(
-            font_name=product.get('font_family', 'NanumGothic'),
-            font_size_title=product.get('font_size_title', 24),
-            font_size_subtitle=product.get('font_size_subtitle', 16),
-            font_size_body=product.get('font_size_body', 12),
-            line_height=product.get('line_height', 180),
-            letter_spacing=product.get('letter_spacing', 0),
-            char_width=product.get('char_width', 100),
-            margin_top=product.get('margin_top', 25),
-            margin_bottom=product.get('margin_bottom', 25),
-            margin_left=product.get('margin_left', 25),
-            margin_right=product.get('margin_right', 25),
-            target_pages=product.get('target_pages', 30)
-        )
-        
-        generated_pdfs = {}
-        total_chapters = len(chapter_titles)
-        selected_list = list(selected)  # set을 list로 변환
-        
-        for i, idx in enumerate(selected_list):
-            cust = customers[idx]
-            name = cust.get('이름', cust.get('고객명', f'고객{idx+1}'))
+        try:
+            # API 키 확인
+            api_key = get_system_config(ConfigKeys.ADMIN_API_KEY, "")
+            if not api_key:
+                st.error("⚠️ API 키가 설정되지 않았습니다.")
+                st.session_state[processing_key] = False
+                return False
             
-            # 고객별 기본 진행률 (0~100)
-            base_progress = int((i / selected_count) * 100)
-            customer_weight = 100 / selected_count  # 고객 1명당 차지하는 %
+            # 🚀 캐싱된 상품 정보 사용
+            product_id = product['id']
+            cache_key = f'product_data_{product_id}'
             
-            def progress_cb(chapter_prog, msg):
-                # chapter_prog: 0.0 ~ 1.0 (목차 진행률)
-                # 고객별 진행률: 콘텐츠 생성 90%, PDF 생성 10%
-                content_progress = int(chapter_prog * 90)
-                st.session_state[f'{prefix}_progress'][idx] = content_progress
-                
-                # 전체 진행률 계산 (1% 단위)
-                overall = base_progress + int(chapter_prog * customer_weight * 0.9)
-                bar.progress(min(overall / 100, 0.99))
-                
-                # 상세 상태 표시
-                current_chapter = int(chapter_prog * total_chapters)
-                status.text(f"⏳ {name}님 ({i+1}/{selected_count}) - {current_chapter}/{total_chapters}장 생성 중... [{overall}%]")
+            if cache_key not in st.session_state:
+                st.session_state[cache_key] = {
+                    'chapters': get_chapters_by_service(product_id),
+                    'guidelines': get_guidelines_by_service(product_id),
+                    'templates': get_templates_by_service(product_id),
+                    'cached_at': time.time()
+                }
             
-            contents = generate_full_content(
-                api_key=api_key,
-                customer_info=cust,
-                chapters=chapter_titles,
-                guideline=guideline_text,
-                service_type=product['name'],
-                target_pages=product.get('target_pages', 30),
-                font_size=product.get('font_size_body', 12),
+            cached = st.session_state[cache_key]
+            chapters = cached['chapters']
+            guidelines = cached['guidelines']
+            templates = cached['templates']
+            
+            if not chapters:
+                st.error("⚠️ 목차가 없습니다.")
+                st.session_state[processing_key] = False
+                return False
+            
+            chapter_titles = [c['title'] for c in chapters]
+            guideline_text = guidelines[0]['content'] if guidelines else ""
+            
+            # 이미지 경로
+            cover_img = next((t['image_path'] for t in templates if t['template_type'] == 'cover'), None)
+            bg_img = next((t['image_path'] for t in templates if t['template_type'] == 'background'), None)
+            info_img = next((t['image_path'] for t in templates if t['template_type'] == 'info'), None)
+            
+            bar = st.progress(0)
+            status = st.empty()
+            
+            # 🚀 PDF 생성기 재사용 (한 번만 생성)
+            pdf_gen = PDFGenerator(
+                font_name=product.get('font_family', 'NanumGothic'),
+                font_size_title=product.get('font_size_title', 24),
+                font_size_subtitle=product.get('font_size_subtitle', 16),
+                font_size_body=product.get('font_size_body', 12),
                 line_height=product.get('line_height', 180),
+                letter_spacing=product.get('letter_spacing', 0),
+                char_width=product.get('char_width', 100),
                 margin_top=product.get('margin_top', 25),
                 margin_bottom=product.get('margin_bottom', 25),
                 margin_left=product.get('margin_left', 25),
                 margin_right=product.get('margin_right', 25),
-                progress_callback=progress_cb
+                target_pages=product.get('target_pages', 30)
             )
             
-            # PDF 생성 단계 (90% → 100%)
-            st.session_state[f'{prefix}_progress'][idx] = 95
-            pdf_progress = base_progress + int(customer_weight * 0.95)
-            bar.progress(min(pdf_progress / 100, 0.99))
-            status.text(f"📄 {name}님 PDF 변환 중... [{pdf_progress}%]")
+            generated_pdfs = {}
+            total_chapters = len(chapter_titles)
+            selected_list = list(selected)
             
-            pdf_bytes = pdf_gen.create_pdf(
-                chapters_content=contents,
-                customer_name=name,
-                service_type=product['name'],
-                cover_image=cover_img,
-                background_image=bg_img,
-                info_image=info_img
-            )
+            # 🔒 멱등성: 이미 생성된 PDF 해시 확인
+            pdf_hash_key = f'{prefix}_pdf_hashes'
+            if pdf_hash_key not in st.session_state:
+                st.session_state[pdf_hash_key] = {}
             
-            generated_pdfs[idx] = {'name': name, 'pdf': pdf_bytes}
-            st.session_state[f'{prefix}_progress'][idx] = 100
-            st.session_state[f'{prefix}_completed'].add(idx)
+            for i, idx in enumerate(selected_list):
+                cust = customers[idx]
+                name = cust.get('이름', cust.get('고객명', f'고객{idx+1}'))
+                
+                # 🔒 멱등성 체크: 이미 생성된 PDF인지 확인
+                order_hash = _generate_order_hash(cust, product_id)
+                if order_hash in st.session_state[pdf_hash_key]:
+                    # 이미 생성된 PDF 재사용
+                    generated_pdfs[idx] = st.session_state[pdf_hash_key][order_hash]
+                    st.session_state[f'{prefix}_progress'][idx] = 100
+                    st.session_state[f'{prefix}_completed'].add(idx)
+                    status.text(f"♻️ {name}님 기존 PDF 재사용 ({i+1}/{selected_count})")
+                    bar.progress((i + 1) / selected_count)
+                    continue
+                
+                # 고객별 진행률
+                base_progress = int((i / selected_count) * 100)
+                customer_weight = 100 / selected_count
+                
+                def progress_cb(chapter_prog, msg):
+                    content_progress = int(chapter_prog * 90)
+                    st.session_state[f'{prefix}_progress'][idx] = content_progress
+                    overall = base_progress + int(chapter_prog * customer_weight * 0.9)
+                    bar.progress(min(overall / 100, 0.99))
+                    current_chapter = int(chapter_prog * total_chapters)
+                    status.text(f"⏳ {name}님 ({i+1}/{selected_count}) - {current_chapter}/{total_chapters}장 [{overall}%]")
+                
+                contents = generate_full_content(
+                    api_key=api_key,
+                    customer_info=cust,
+                    chapters=chapter_titles,
+                    guideline=guideline_text,
+                    service_type=product['name'],
+                    target_pages=product.get('target_pages', 30),
+                    font_size=product.get('font_size_body', 12),
+                    line_height=product.get('line_height', 180),
+                    margin_top=product.get('margin_top', 25),
+                    margin_bottom=product.get('margin_bottom', 25),
+                    margin_left=product.get('margin_left', 25),
+                    margin_right=product.get('margin_right', 25),
+                    progress_callback=progress_cb
+                )
+                
+                # PDF 생성
+                st.session_state[f'{prefix}_progress'][idx] = 95
+                pdf_progress = base_progress + int(customer_weight * 0.95)
+                bar.progress(min(pdf_progress / 100, 0.99))
+                status.text(f"📄 {name}님 PDF 변환 중... [{pdf_progress}%]")
+                
+                pdf_bytes = pdf_gen.create_pdf(
+                    chapters_content=contents,
+                    customer_name=name,
+                    service_type=product['name'],
+                    cover_image=cover_img,
+                    background_image=bg_img,
+                    info_image=info_img
+                )
+                
+                pdf_data = {'name': name, 'pdf': pdf_bytes}
+                generated_pdfs[idx] = pdf_data
+                
+                # 🔒 멱등성: 해시 저장
+                st.session_state[pdf_hash_key][order_hash] = pdf_data
+                
+                st.session_state[f'{prefix}_progress'][idx] = 100
+                st.session_state[f'{prefix}_completed'].add(idx)
+                
+                complete_progress = int(((i + 1) / selected_count) * 100)
+                bar.progress(complete_progress / 100)
+                status.text(f"✅ {name}님 완료! [{complete_progress}%]")
             
-            # 고객 완료
-            complete_progress = int(((i + 1) / selected_count) * 100)
-            bar.progress(complete_progress / 100)
-            status.text(f"✅ {name}님 완료! [{complete_progress}%]")
+            st.session_state[f'{prefix}_pdfs'] = generated_pdfs
+            bar.progress(1.0)
+            
+            # 📊 성능 로그
+            elapsed = time.time() - start_time
+            status.text(f"✅ {selected_count}명 PDF 생성 완료! [100%] ({elapsed:.1f}초)")
+            print(f"[성능] PDF 생성 완료: {selected_count}명, {elapsed:.1f}초")
+            
+            st.balloons()
         
-        st.session_state[f'{prefix}_pdfs'] = generated_pdfs
-        bar.progress(1.0)
-        status.text(f"✅ {selected_count}명 PDF 생성 완료! [100%]")
-        st.balloons()
+        finally:
+            # 🔒 처리 종료 플래그
+            st.session_state[processing_key] = False
+        
         st.rerun()
     
     return True
