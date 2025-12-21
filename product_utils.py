@@ -237,122 +237,241 @@ def render_product_list(config: ProductConfig, products: list):
 
 
 def render_product_detail(config: ProductConfig, product: dict):
-    """상품 상세/편집 화면"""
+    """상품 상세보기 + 편집 통합 화면"""
     prefix = config.prefix
+    edit_mode = st.session_state.get(f'{prefix}_edit_mode', False)
     
-    # 편집 모드
-    if st.session_state[f'{prefix}_edit_mode']:
-        render_product_edit_form(config, product)
-        return
-    
-    # 상세 보기 모드
-    st.markdown(f"### {config.icon} {product['name']}")
-    
-    # 목차, 지침 표시
+    # 데이터 로드
     chapters = get_chapters_by_service(product['id'])
     guidelines = get_guidelines_by_service(product['id'])
     templates = get_templates_by_service(product['id'])
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**📑 목차**")
-        if chapters:
-            for i, ch in enumerate(chapters):
-                st.caption(f"{i+1}. {ch['title']}")
-        else:
-            st.caption("목차 없음")
+    # 이미지 경로 추출
+    cover_img = next((t['image_path'] for t in templates if t['template_type'] == 'cover'), None)
+    bg_img = next((t['image_path'] for t in templates if t['template_type'] == 'background'), None)
+    info_img = next((t['image_path'] for t in templates if t['template_type'] == 'info'), None)
     
-    with col2:
-        st.markdown("**📜 AI 지침**")
-        if guidelines:
-            st.caption(guidelines[0]['content'][:100] + "..." if len(guidelines[0]['content']) > 100 else guidelines[0]['content'])
-        else:
-            st.caption("지침 없음")
-    
-    # 이미지 미리보기
-    if templates:
-        st.markdown("**🖼️ 이미지**")
-        icols = st.columns(3)
-        for i, t in enumerate(templates[:3]):
-            with icols[i]:
-                st.caption(t['name'])
-                if t.get('image_path'):
-                    try:
-                        st.image(t['image_path'], width=60)
-                    except:
-                        st.caption("(로드 실패)")
+    # 헤더
+    hcol1, hcol2 = st.columns([4, 1])
+    with hcol1:
+        st.markdown(f"### {config.icon} {product['name']}")
+    with hcol2:
+        if st.button("⬅️ 목록", use_container_width=True, key=f"{prefix}_back"):
+            st.session_state[f'{prefix}_view_id'] = None
+            st.session_state[f'{prefix}_edit_mode'] = False
+            st.rerun()
     
     st.markdown("---")
-    bcol1, bcol2, bcol3 = st.columns(3)
-    with bcol1:
-        if st.button("✏️ 편집", use_container_width=True, key=f"{prefix}_edit_btn"):
-            st.session_state[f'{prefix}_edit_mode'] = True
-            st.rerun()
-    with bcol2:
-        if st.button("🗑️ 삭제", use_container_width=True, key=f"{prefix}_del_btn"):
-            delete_service(product['id'])
-            clear_service_cache()
-            st.session_state[f'{prefix}_view_id'] = None
-            st.toast("🗑️ 삭제됨")
-            st.rerun()
-    with bcol3:
-        if st.button("⬅️ 목록", use_container_width=True, key=f"{prefix}_back_btn"):
-            st.session_state[f'{prefix}_view_id'] = None
-            st.rerun()
-
-
-def render_product_edit_form(config: ProductConfig, product: dict):
-    """상품 편집 폼"""
-    prefix = config.prefix
     
-    st.markdown(f"### ✏️ {product['name']} 편집")
+    # ========== 기본 정보 ==========
+    if edit_mode:
+        edit_name = st.text_input("상품명", value=product['name'], key=f"{prefix}_edit_name")
+    else:
+        st.markdown(f"**상품명:** {product['name']}")
     
-    edit_name = st.text_input("상품명", value=product['name'], key=f"{prefix}_edit_name")
-    
-    chapters = get_chapters_by_service(product['id'])
-    guidelines = get_guidelines_by_service(product['id'])
-    
+    # ========== 목차 & 지침 ==========
     col1, col2 = st.columns(2)
+    
     with col1:
         st.markdown("**📑 목차**")
         ch_text = "\n".join([c['title'] for c in chapters]) if chapters else ""
-        edit_chapters = st.text_area("", value=ch_text, height=200, key=f"{prefix}_edit_ch")
+        if edit_mode:
+            edit_chapters = st.text_area("", value=ch_text, height=150, key=f"{prefix}_edit_ch",
+                                        placeholder="1. 총운\n2. 재물운\n3. 건강운")
+        else:
+            if chapters:
+                for i, ch in enumerate(chapters):
+                    st.caption(f"{i+1}. {ch['title']}")
+            else:
+                st.caption("목차 없음")
+    
     with col2:
         st.markdown("**📜 AI 지침**")
         guide_text = guidelines[0]['content'] if guidelines else ""
-        edit_guide = st.text_area("", value=guide_text, height=200, key=f"{prefix}_edit_guide")
+        if edit_mode:
+            edit_guide = st.text_area("", value=guide_text, height=150, key=f"{prefix}_edit_guide",
+                                     placeholder="20년 경력의 전문가로서...")
+        else:
+            if guide_text:
+                st.caption(guide_text[:150] + "..." if len(guide_text) > 150 else guide_text)
+            else:
+                st.caption("지침 없음")
     
-    design = render_design_settings(prefix + "_edit", expanded=True, defaults=product)
+    # ========== 디자인 설정 ==========
+    with st.expander("🎨 디자인 설정", expanded=edit_mode):
+        if edit_mode:
+            # 편집 가능
+            dcol1, dcol2, dcol3, dcol4 = st.columns(4)
+            with dcol1:
+                font_idx = list(FONT_OPTIONS.keys()).index(product.get('font_family', 'NanumGothic')) \
+                    if product.get('font_family') in FONT_OPTIONS else 0
+                edit_font = st.selectbox("폰트", list(FONT_OPTIONS.keys()), index=font_idx,
+                                        format_func=lambda x: FONT_OPTIONS[x], key=f"{prefix}_edit_font")
+            with dcol2:
+                edit_title_size = st.number_input("대제목", value=product.get('font_size_title', 24),
+                                                  min_value=16, max_value=40, key=f"{prefix}_edit_title")
+            with dcol3:
+                edit_subtitle_size = st.number_input("소제목", value=product.get('font_size_subtitle', 16),
+                                                     min_value=12, max_value=30, key=f"{prefix}_edit_sub")
+            with dcol4:
+                edit_body_size = st.number_input("본문", value=product.get('font_size_body', 12),
+                                                 min_value=8, max_value=20, key=f"{prefix}_edit_body")
+            
+            dcol5, dcol6 = st.columns(2)
+            with dcol5:
+                edit_line_height = st.slider("행간 %", 100, 300, product.get('line_height', 180),
+                                            key=f"{prefix}_edit_lh")
+            with dcol6:
+                edit_pages = st.number_input("목표 페이지", value=product.get('target_pages', 30),
+                                            min_value=1, max_value=500, key=f"{prefix}_edit_pages")
+            
+            st.markdown("**📐 여백 (mm)**")
+            mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+            with mcol1:
+                edit_mt = st.number_input("상단", value=product.get('margin_top', 25), key=f"{prefix}_edit_mt")
+            with mcol2:
+                edit_mb = st.number_input("하단", value=product.get('margin_bottom', 25), key=f"{prefix}_edit_mb")
+            with mcol3:
+                edit_ml = st.number_input("좌측", value=product.get('margin_left', 25), key=f"{prefix}_edit_ml")
+            with mcol4:
+                edit_mr = st.number_input("우측", value=product.get('margin_right', 25), key=f"{prefix}_edit_mr")
+        else:
+            # 읽기 전용
+            st.caption(f"폰트: {FONT_OPTIONS.get(product.get('font_family', 'NanumGothic'), '나눔고딕')}")
+            st.caption(f"글자 크기: 대제목 {product.get('font_size_title', 24)}pt / 소제목 {product.get('font_size_subtitle', 16)}pt / 본문 {product.get('font_size_body', 12)}pt")
+            st.caption(f"행간: {product.get('line_height', 180)}% / 목표: {product.get('target_pages', 30)}페이지")
+            st.caption(f"여백: 상{product.get('margin_top', 25)} 하{product.get('margin_bottom', 25)} 좌{product.get('margin_left', 25)} 우{product.get('margin_right', 25)}mm")
     
+    # ========== 이미지 ==========
+    st.markdown("**🖼️ 이미지**")
+    icol1, icol2, icol3 = st.columns(3)
+    
+    with icol1:
+        st.caption("📕 표지")
+        if cover_img:
+            try:
+                st.image(cover_img, width=100)
+            except:
+                st.caption("(로드 실패)")
+        else:
+            st.caption("없음")
+        if edit_mode:
+            st.file_uploader("새 표지", type=['jpg','jpeg','png'], key=f"{prefix}_new_cover", label_visibility="collapsed")
+    
+    with icol2:
+        st.caption("📄 내지")
+        if bg_img:
+            try:
+                st.image(bg_img, width=100)
+            except:
+                st.caption("(로드 실패)")
+        else:
+            st.caption("없음")
+        if edit_mode:
+            st.file_uploader("새 내지", type=['jpg','jpeg','png'], key=f"{prefix}_new_bg", label_visibility="collapsed")
+    
+    with icol3:
+        st.caption("📋 안내지")
+        if info_img:
+            try:
+                st.image(info_img, width=100)
+            except:
+                st.caption("(로드 실패)")
+        else:
+            st.caption("없음")
+        if edit_mode:
+            st.file_uploader("새 안내지", type=['jpg','jpeg','png'], key=f"{prefix}_new_info", label_visibility="collapsed")
+    
+    # ========== 버튼 ==========
     st.markdown("---")
-    bcol1, bcol2 = st.columns(2)
-    with bcol1:
-        if st.button("💾 저장", type="primary", use_container_width=True, key=f"{prefix}_save_edit"):
-            update_service(product['id'], name=edit_name, **design)
-            
-            # 목차 업데이트
-            delete_chapters_by_service(product['id'])
-            if edit_chapters:
-                add_chapters_bulk(product['id'], [c.strip() for c in edit_chapters.split('\n') if c.strip()])
-            
-            # 지침 업데이트
-            if guidelines:
-                update_guideline(guidelines[0]['id'], content=edit_guide)
-            elif edit_guide:
-                add_guideline(product['id'], "기본 지침", edit_guide)
-            
-            # 이미지 업데이트
-            save_product_images(product['id'], prefix + "_edit")
-            
-            clear_service_cache()
-            st.session_state[f'{prefix}_edit_mode'] = False
-            st.toast("✅ 저장됨")
-            st.rerun()
     
-    with bcol2:
-        if st.button("❌ 취소", use_container_width=True, key=f"{prefix}_cancel_edit"):
-            st.session_state[f'{prefix}_edit_mode'] = False
-            st.rerun()
+    if edit_mode:
+        # 편집 모드 버튼
+        bcol1, bcol2, bcol3 = st.columns(3)
+        with bcol1:
+            if st.button("💾 저장", type="primary", use_container_width=True, key=f"{prefix}_save"):
+                # 기본 정보 저장
+                update_service(
+                    product['id'],
+                    name=st.session_state.get(f"{prefix}_edit_name", product['name']),
+                    font_family=st.session_state.get(f"{prefix}_edit_font", product.get('font_family')),
+                    font_size_title=st.session_state.get(f"{prefix}_edit_title", product.get('font_size_title')),
+                    font_size_subtitle=st.session_state.get(f"{prefix}_edit_sub", product.get('font_size_subtitle')),
+                    font_size_body=st.session_state.get(f"{prefix}_edit_body", product.get('font_size_body')),
+                    line_height=st.session_state.get(f"{prefix}_edit_lh", product.get('line_height')),
+                    target_pages=st.session_state.get(f"{prefix}_edit_pages", product.get('target_pages')),
+                    margin_top=st.session_state.get(f"{prefix}_edit_mt", product.get('margin_top')),
+                    margin_bottom=st.session_state.get(f"{prefix}_edit_mb", product.get('margin_bottom')),
+                    margin_left=st.session_state.get(f"{prefix}_edit_ml", product.get('margin_left')),
+                    margin_right=st.session_state.get(f"{prefix}_edit_mr", product.get('margin_right'))
+                )
+                
+                # 목차 업데이트
+                edit_ch = st.session_state.get(f"{prefix}_edit_ch", "")
+                delete_chapters_by_service(product['id'])
+                if edit_ch:
+                    add_chapters_bulk(product['id'], [c.strip() for c in edit_ch.split('\n') if c.strip()])
+                
+                # 지침 업데이트
+                edit_gd = st.session_state.get(f"{prefix}_edit_guide", "")
+                if guidelines:
+                    update_guideline(guidelines[0]['id'], content=edit_gd)
+                elif edit_gd:
+                    add_guideline(product['id'], "기본 지침", edit_gd)
+                
+                # 이미지 업데이트
+                new_cover = st.session_state.get(f"{prefix}_new_cover")
+                new_bg = st.session_state.get(f"{prefix}_new_bg")
+                new_info = st.session_state.get(f"{prefix}_new_info")
+                
+                if new_cover:
+                    path = save_uploaded_file(new_cover, "cover")
+                    # 기존 삭제 후 추가
+                    for t in templates:
+                        if t['template_type'] == 'cover':
+                            delete_template(t['id'])
+                    add_template(product['id'], "cover", "표지", path)
+                if new_bg:
+                    path = save_uploaded_file(new_bg, "bg")
+                    for t in templates:
+                        if t['template_type'] == 'background':
+                            delete_template(t['id'])
+                    add_template(product['id'], "background", "내지", path)
+                if new_info:
+                    path = save_uploaded_file(new_info, "info")
+                    for t in templates:
+                        if t['template_type'] == 'info':
+                            delete_template(t['id'])
+                    add_template(product['id'], "info", "안내지", path)
+                
+                clear_service_cache()
+                st.session_state[f'{prefix}_edit_mode'] = False
+                st.toast("✅ 저장 완료!")
+                st.rerun()
+        
+        with bcol2:
+            if st.button("❌ 취소", use_container_width=True, key=f"{prefix}_cancel"):
+                st.session_state[f'{prefix}_edit_mode'] = False
+                st.rerun()
+        
+        with bcol3:
+            pass
+    else:
+        # 보기 모드 버튼
+        bcol1, bcol2, bcol3 = st.columns(3)
+        with bcol1:
+            if st.button("✏️ 수정", type="primary", use_container_width=True, key=f"{prefix}_edit"):
+                st.session_state[f'{prefix}_edit_mode'] = True
+                st.rerun()
+        with bcol2:
+            if st.button("🗑️ 삭제", use_container_width=True, key=f"{prefix}_del"):
+                delete_service(product['id'])
+                clear_service_cache()
+                st.session_state[f'{prefix}_view_id'] = None
+                st.toast("🗑️ 삭제됨")
+                st.rerun()
+        with bcol3:
+            pass
 
 
 # ============================================
