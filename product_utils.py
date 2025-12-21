@@ -148,16 +148,9 @@ def render_design_settings(prefix: str, expanded: bool = False, defaults: dict =
             new_body = st.number_input("본문", value=defaults.get('font_size_body', 12),
                                        min_value=8, max_value=20, key=f"{prefix}_body_size")
         
-        fcol5, fcol6, fcol7 = st.columns(3)
-        with fcol5:
-            new_line_height = st.slider("행간 %", 100, 300, defaults.get('line_height', 180),
-                                        key=f"{prefix}_lh")
-        with fcol6:
-            new_letter_spacing = st.slider("자간 %", -5, 10, defaults.get('letter_spacing', 0),
-                                           key=f"{prefix}_ls")
-        with fcol7:
-            new_char_width = st.slider("장평 %", 50, 150, defaults.get('char_width', 100),
-                                       key=f"{prefix}_cw")
+        # 행간만 표시 (자간/장평은 양쪽정렬에서 미지원)
+        new_line_height = st.slider("행간 %", 100, 300, defaults.get('line_height', 180),
+                                    key=f"{prefix}_lh")
         
         st.markdown("**📐 여백 (mm)**")
         mcol1, mcol2, mcol3, mcol4 = st.columns(4)
@@ -188,8 +181,10 @@ def render_design_settings(prefix: str, expanded: bool = False, defaults: dict =
     return {
         'font_family': new_font, 'font_size_title': new_title,
         'font_size_subtitle': new_subtitle, 'font_size_body': new_body,
-        'line_height': new_line_height, 'letter_spacing': new_letter_spacing,
-        'char_width': new_char_width, 'margin_top': new_mt, 'margin_bottom': new_mb,
+        'line_height': new_line_height, 
+        'letter_spacing': 0,  # 고정값 (미사용)
+        'char_width': 100,    # 고정값 (미사용)
+        'margin_top': new_mt, 'margin_bottom': new_mb,
         'margin_left': new_ml, 'margin_right': new_mr, 'target_pages': new_pages
     }
 

@@ -239,7 +239,7 @@ def generate_full_content(
 # ============================================
 
 class PDFGenerator:
-    """PDF 생성기"""
+    """PDF 생성기 - 양쪽 정렬"""
     
     def __init__(
         self,
@@ -248,8 +248,8 @@ class PDFGenerator:
         font_size_subtitle: int = 16,
         font_size_body: int = 12,
         line_height: int = 180,
-        letter_spacing: int = 0,
-        char_width: int = 100,
+        letter_spacing: int = 0,   # 미사용 (호환성 유지)
+        char_width: int = 100,     # 미사용 (호환성 유지)
         margin_top: int = 25,
         margin_bottom: int = 25,
         margin_left: int = 25,
@@ -261,21 +261,20 @@ class PDFGenerator:
         self.font_size_subtitle = font_size_subtitle
         self.font_size_body = font_size_body
         
+        # 행간 계산
         self.line_height_ratio = line_height / 100.0
         self.line_height = font_size_body * self.line_height_ratio
-        self.char_width = char_width / 100.0
         
+        # 여백 (mm → pt)
         self.margin_top = margin_top * mm
         self.margin_bottom = margin_bottom * mm
         self.margin_left = margin_left * mm
         self.margin_right = margin_right * mm
         
+        # 페이지 크기
         self.width, self.height = A4
         self.usable_width = self.width - self.margin_left - self.margin_right
         self.usable_height = self.height - self.margin_top - self.margin_bottom
-        
-        char_width_pt = font_size_body * 1.0 * self.char_width
-        self.chars_per_line = int(self.usable_width / char_width_pt)
     
     def create_pdf(
         self,
@@ -305,8 +304,8 @@ class PDFGenerator:
         if intro_data:
             self._draw_full_image(c, intro_data)
         
-        # 3. 목차
-        self._draw_toc(c, chapters_content)
+        # 3. 목차 (내지 배경 적용)
+        self._draw_toc(c, chapters_content, bg_data)
         
         # 4. 본문
         for chapter in chapters_content:
@@ -355,8 +354,11 @@ class PDFGenerator:
         self._draw_image(c, img_data, 0, 0, self.width, self.height)
         c.showPage()
     
-    def _draw_toc(self, c, chapters):
-        """목차 페이지"""
+    def _draw_toc(self, c, chapters, bg_data=None):
+        """목차 페이지 - 내지 배경 적용"""
+        # 내지 배경 이미지
+        self._draw_image(c, bg_data, 0, 0, self.width, self.height)
+        
         c.setFont(self.font_name, self.font_size_title)
         c.drawString(self.margin_left, self.height - self.margin_top, "목 차")
         
@@ -365,9 +367,11 @@ class PDFGenerator:
         
         for i, ch in enumerate(chapters):
             c.drawString(self.margin_left + 10, y, f"{i+1}. {ch['title']}")
-            y -= 30
+            y -= 35
             if y < self.margin_bottom:
                 c.showPage()
+                # 다음 페이지에도 배경
+                self._draw_image(c, bg_data, 0, 0, self.width, self.height)
                 c.setFont(self.font_name, self.font_size_subtitle)
                 y = self.height - self.margin_top
         
