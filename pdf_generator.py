@@ -160,15 +160,38 @@ def _get_openai_client(api_key: str) -> OpenAI:
 # GPT 콘텐츠 생성
 # ============================================
 
+def calculate_chars_per_page(font_size: int, line_height: int, margin_top: int, 
+                             margin_bottom: int, margin_left: int, margin_right: int) -> int:
+    """페이지당 글자 수 계산"""
+    # A4: 210mm x 297mm
+    page_width_mm = 210
+    page_height_mm = 297
+    
+    usable_width_mm = page_width_mm - margin_left - margin_right
+    usable_height_mm = page_height_mm - margin_top - margin_bottom
+    
+    # 한글 기준: 1pt ≈ 0.35mm
+    char_width_mm = font_size * 0.35
+    line_height_mm = font_size * 0.35 * (line_height / 100)
+    
+    chars_per_line = int(usable_width_mm / char_width_mm)
+    lines_per_page = int(usable_height_mm / line_height_mm)
+    
+    # 여유분 고려 (80%)
+    chars_per_page = int(chars_per_line * lines_per_page * 0.8)
+    return max(chars_per_page, 300)
+
+
 def generate_chapter_content(
     api_key: str,
     customer_info: dict,
     chapter_title: str,
     guideline: str,
     service_type: str,
+    target_chars: int = 1000,  # 목표 글자 수 추가
     model: str = "gpt-4o-mini"
 ) -> str:
-    """단일 챕터 콘텐츠 생성"""
+    """단일 챕터 콘텐츠 생성 - 목표 글자 수 반영"""
     try:
         client = _get_openai_client(api_key)
         customer_str = "\n".join([f"- {k}: {v}" for k, v in customer_info.items() if v])
@@ -185,21 +208,25 @@ def generate_chapter_content(
 [현재 작성할 챕터]
 {chapter_title}
 
+[중요 - 글자 수 요구사항]
+이 챕터는 반드시 {target_chars}자 이상 작성해주세요.
+충분히 상세하고 풍부한 내용으로 작성해야 합니다.
+
 위 챕터를 상세하게 작성해주세요.
 - 전문적이면서도 이해하기 쉽게
 - 구체적인 조언과 예시 포함
 - 따뜻하고 희망적인 톤 유지
-- 최소 500자 이상 작성
 - 마크다운 문법 사용하지 말고 일반 텍스트로 작성
-- 챕터 제목은 다시 쓰지 마세요"""
+- 챕터 제목은 다시 쓰지 마세요
+- 최소 {target_chars}자 이상 필수!"""
         
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": f"당신은 전문적이고 따뜻한 {service_type} 전문가입니다. 마크다운 없이 일반 텍스트로만 답변하세요."},
+                {"role": "system", "content": f"당신은 전문적이고 따뜻한 {service_type} 전문가입니다. 마크다운 없이 일반 텍스트로만 답변하세요. 요청된 글자 수를 반드시 충족해야 합니다."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2000,
+            max_tokens=4000,  # 더 긴 응답 허용
             temperature=0.7
         )
         
@@ -215,10 +242,33 @@ def generate_full_content(
     chapters: list,
     guideline: str,
     service_type: str,
+    target_pages: int = 30,
+    font_size: int = 12,
+    line_height: int = 180,
+    margin_top: int = 25,
+    margin_bottom: int = 25,
+    margin_left: int = 25,
+    margin_right: int = 25,
     model: str = "gpt-4o-mini",
     progress_callback: Callable = None
 ) -> List[Dict]:
-    """전체 콘텐츠 생성"""
+    """전체 콘텐츠 생성 - 목표 페이지 반영"""
+    
+    # 페이지당 글자 수 계산
+    chars_per_page = calculate_chars_per_page(
+        font_size, line_height, margin_top, margin_bottom, margin_left, margin_right
+    )
+    
+    # 총 필요 글자 수
+    total_chars_needed = target_pages * chars_per_page
+    
+    # 목차당 필요 글자 수 (표지, 목차, 안내 페이지 제외하고 계산)
+    content_pages = max(target_pages - 3, target_pages * 0.9)  # 본문 페이지
+    chars_per_chapter = int((content_pages * chars_per_page) / len(chapters))
+    
+    print(f"[PDF설정] 목표: {target_pages}페이지, 페이지당 {chars_per_page}자")
+    print(f"[PDF설정] 목차 {len(chapters)}개, 목차당 {chars_per_chapter}자 목표")
+    
     full_content = []
     total = len(chapters)
     
@@ -227,8 +277,14 @@ def generate_full_content(
             progress_callback((i + 1) / total, f"'{chapter}' 작성 중...")
         
         content = generate_chapter_content(
-            api_key, customer_info, chapter, guideline, service_type, model
+            api_key, customer_info, chapter, guideline, service_type,
+            target_chars=chars_per_chapter,  # 목표 글자 수 전달
+            model=model
         )
+        
+        actual_chars = len(content)
+        print(f"[챕터 {i+1}] '{chapter}': {actual_chars}자 생성 (목표: {chars_per_chapter}자)")
+        
         full_content.append({"title": chapter, "content": content})
     
     return full_content
@@ -265,16 +321,23 @@ class PDFGenerator:
         self.line_height_ratio = line_height / 100.0
         self.line_height = font_size_body * self.line_height_ratio
         
-        # 여백 (mm → pt)
+        # 여백 (mm → pt) - 1mm = 2.834645669 pt
         self.margin_top = margin_top * mm
         self.margin_bottom = margin_bottom * mm
         self.margin_left = margin_left * mm
         self.margin_right = margin_right * mm
         
-        # 페이지 크기
+        # 페이지 크기 (A4: 595.27 x 841.89 pt)
         self.width, self.height = A4
         self.usable_width = self.width - self.margin_left - self.margin_right
         self.usable_height = self.height - self.margin_top - self.margin_bottom
+        
+        # 디버깅 로그
+        print(f"[PDF] 페이지: {self.width:.1f} x {self.height:.1f} pt")
+        print(f"[PDF] 여백(pt): 상{self.margin_top:.1f} 하{self.margin_bottom:.1f} 좌{self.margin_left:.1f} 우{self.margin_right:.1f}")
+        print(f"[PDF] 여백(mm): 상{margin_top} 하{margin_bottom} 좌{margin_left} 우{margin_right}")
+        print(f"[PDF] 사용영역: {self.usable_width:.1f} x {self.usable_height:.1f} pt")
+        print(f"[PDF] 본문: {font_size_body}pt, 행간: {self.line_height:.1f}pt ({line_height}%)")
     
     def create_pdf(
         self,
