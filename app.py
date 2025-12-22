@@ -761,9 +761,6 @@ def create_pdf_document(customer_name: str, chapters_content: list, templates: d
         
         c = canvas.Canvas(buffer, pagesize=A4)
         
-        # 자간 설정 적용
-        c.setCharSpace(char_space)
-        
         # 내지 배경 이미지 경로
         bg_path = templates.get('background')
         
@@ -1138,9 +1135,6 @@ def create_pdf_document(customer_name: str, chapters_content: list, templates: d
         margin_right = font_settings.get('margin_right', 25) * mm
         
         c = canvas.Canvas(buffer, pagesize=A4)
-        
-        # 자간 설정 적용
-        c.setCharSpace(char_space)
         
         # 내지 배경 이미지 경로
         bg_path = templates.get('background')
