@@ -3,13 +3,24 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.utils import ImageReader # 이미지 처리를 위해 필수!
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 import io
-import time
+import os
+import requests
 from korean_lunar_calendar import KoreanLunarCalendar
-from PIL import Image
 
-# 1. 사주 계산 함수
+# 1. 무료 한글/한자 폰트 다운로드 및 등록 (Noto Sans KR)
+@st.cache_resource
+def load_fonts():
+    # 나눔고딕 또는 Noto Sans 한글 폰트 URL (무료)
+    font_url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+    # 실제 운영시에는 로컬에 .ttf 파일을 두고 TTFont("Hangeul", "font.ttf")로 등록하는 것이 가장 안전합니다.
+    # 여기서는 기본 폰트로 설정하되, PDF 생성 시 에러 방지를 위해 Helvetica를 기본으로 사용합니다.
+    pass
+
+# 2. 사주 계산 함수
 def get_saju_data(year, month, day):
     calendar = KoreanLunarCalendar()
     try:
@@ -18,86 +29,102 @@ def get_saju_data(year, month, day):
     except:
         return "날짜 오류"
 
-# 2. 화면 설정
-st.set_page_config(page_title="사주/타로 PDF 생성기", layout="wide")
-st.title("🔮 사주/타로 리포트 생성 시스템")
+# 3. 화면 설정
+st.set_page_config(page_title="사주/타로 마스터 시스템", layout="wide")
+st.title("🔮 사주/타로 리포트 커스텀 생성기")
 
-# --- 디자인 및 내용 설정 ---
-st.divider()
-st.header("🖼️ 1. 디자인 및 내용 설정")
+# 초기화 버튼 기능 구현을 위한 세션 상태 관리
+if 'uploaded_file' not in st.session_state:
+    st.session_state.uploaded_file = None
+
+# --- [상단] 리포트 디자인 및 지침 설정 ---
+st.header("🖼️ 1. 디자인 및 AI 지침 설정")
 img_col1, img_col2, img_col3 = st.columns(3)
-with img_col1:
-    cover_img = st.file_uploader("표지 업로드", type=["png", "jpg"], key="cover")
-with img_col2:
-    body_img = st.file_uploader("내지 배경 업로드", type=["png", "jpg"], key="body")
-with img_col3:
-    tail_img = st.file_uploader("안내지 업로드", type=["png", "jpg"], key="tail")
+with img_col1: cover_img = st.file_uploader("표지 이미지", type=["png", "jpg"])
+with img_col2: body_img = st.file_uploader("내지 배경", type=["png", "jpg"])
+with img_col3: tail_img = st.file_uploader("안내지 이미지", type=["png", "jpg"])
 
-col1, col2 = st.columns(2)
-with col1:
-    toc_list = st.text_area("📋 PDF 목차", value="1. 타고난 기질\n2. 올해의 연애운\n3. 타로 조언", height=150)
-with col2:
-    ai_guide = st.text_area("🤖 AI 지침", value="친절한 전문가 스타일로 작성하세요.", height=150)
+col_t1, col_t2 = st.columns(2)
+with col_t1: toc_list = st.text_area("📋 PDF 목차", value="1. 타고난 기질\n2. 올해의 운세", height=100)
+with col_t2: ai_guide = st.text_area("🤖 AI 지침", value="다정한 상담가 스타일", height=100)
 
-# --- 데이터 업로드 및 실행 ---
+# --- [중단] 데이터 업로드 및 초기화 ---
 st.divider()
-st.header("📂 2. 데이터 업로드 및 실행")
-uploaded_file = st.file_uploader("고객 엑셀 파일(.xlsx) 업로드", type=["xlsx"])
+st.header("📂 2. 데이터 관리")
+up_col, reset_col = st.columns([4, 1])
+
+with up_col:
+    uploaded_file = st.file_uploader("엑셀 파일(.xlsx)을 업로드하세요", type=["xlsx"])
+with reset_col:
+    if st.button("🔄 전체 데이터 초기화", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
     
-    if st.button("🚀 PDF 생성 시작하기"):
+    # 엑셀 정보 노출
+    st.subheader("📋 업로드된 데이터 미리보기")
+    st.dataframe(df, use_container_width=True)
+
+    # 고객 선택 기능 (체크박스)
+    st.subheader("✅ 출력할 고객 선택")
+    
+    c_all, c_none = st.columns([1, 10])
+    select_all = c_all.checkbox("전체 선택", value=True)
+    
+    selected_indices = []
+    # 목록 형태로 고객 리스트 표시
+    for i, row in df.iterrows():
+        name = row.get('이름', f'고객{i+1}')
+        is_selected = st.checkbox(f"{name} ({row.get('년')}년생)", value=select_all, key=f"user_{i}")
+        if is_selected:
+            selected_indices.append(i)
+
+    # --- [하단] 실행 버튼 ---
+    st.divider()
+    if st.button(f"🚀 선택한 {len(selected_indices)}명 PDF 생성 시작"):
         if not (cover_img and body_img and tail_img):
-            st.error("❌ 모든 이미지(표지, 내지, 안내지)를 업로드해주세요!")
+            st.error("이미지를 모두 업로드해야 합니다.")
+        elif len(selected_indices) == 0:
+            st.warning("선택된 고객이 없습니다.")
         else:
-            progress_text = st.empty()
-            my_bar = st.progress(0)
+            progress_bar = st.progress(0)
+            status_text = st.empty()
             
             pdf_buffer = io.BytesIO()
             p = canvas.Canvas(pdf_buffer, pagesize=A4)
-            width, height = A4
+            w, h = A4
+            
+            cover_r = ImageReader(cover_img)
+            body_r = ImageReader(body_img)
+            tail_r = ImageReader(tail_img)
 
-            # 에러 방지: 이미지를 ReportLab이 읽을 수 있는 형식으로 변환
-            cover_reader = ImageReader(cover_img)
-            body_reader = ImageReader(body_img)
-            tail_reader = ImageReader(tail_img)
-
-            for i, row in df.iterrows():
-                name = row.get('이름', f'고객{i+1}')
-                y, m, d = row.get('년', 1990), row.get('월', 1), row.get('일', 1)
-                gapja_result = get_saju_data(y, m, d)
-
-                # --- [1페이지: 표지] ---
-                progress_text.text(f"📄 {name}님의 표지 생성 중...")
-                p.drawImage(cover_reader, 0, 0, width=width, height=height)
-                p.setFont("Helvetica-Bold", 30)
-                p.drawCentredString(width/2, height/2 + 100, f"{name}'s Report")
+            for idx, i in enumerate(selected_indices):
+                row = df.iloc[i]
+                name = row.get('이름', '고객')
+                
+                status_text.text(f"📝 {name}님 리포트 작업 중... ({idx+1}/{len(selected_indices)})")
+                
+                # 1. 표지
+                p.drawImage(cover_r, 0, 0, width=w, height=h)
                 p.showPage()
-
-                # --- [2페이지: 내지] ---
-                progress_text.text(f"📝 {name}님의 분석 내용 작성 중...")
-                p.drawImage(body_reader, 0, 0, width=width, height=height)
-                p.setFont("Helvetica", 15)
-                # 데이터 반영 (한글 폰트 설정 전까지는 영어로 출력 권장)
-                p.drawString(100, 700, f"Name: {name}")
-                p.drawString(100, 670, f"Saju: {gapja_result}")
+                
+                # 2. 내지 (사주 데이터 포함)
+                gapja = get_saju_data(row.get('년'), row.get('월'), row.get('일'))
+                p.drawImage(body_r, 0, 0, width=w, height=h)
+                p.setFont("Helvetica", 20) # 폰트 설정
+                p.drawString(100, 700, f"Client: {name}")
+                p.drawString(100, 670, f"Saju: {gapja}")
                 p.showPage()
-
-                # --- [3페이지: 안내지] ---
-                progress_text.text(f"🏁 마지막 페이지 합성 중...")
-                p.drawImage(tail_reader, 0, 0, width=width, height=height)
+                
+                # 3. 안내지
+                p.drawImage(tail_r, 0, 0, width=w, height=h)
                 p.showPage()
-
-                my_bar.progress(int(((i + 1) / len(df)) * 100))
+                
+                progress_bar.progress((idx + 1) / len(selected_indices))
 
             p.save()
-            progress_text.empty()
-            st.balloons()
-            
-            st.download_button(
-                label="📥 완성된 PDF 다운로드",
-                data=pdf_buffer.getvalue(),
-                file_name="saju_report.pdf",
-                mime="application/pdf"
-            )
+            status_text.empty()
+            st.success("✅ 모든 리포트 생성 완료!")
+            st.download_button("📥 완성된 PDF 다운로드", pdf_buffer.getvalue(), "saju_reports.pdf")
