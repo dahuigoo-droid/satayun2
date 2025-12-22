@@ -76,3 +76,52 @@ if uploaded_file:
             file_name="report.pdf",
             mime="application/pdf"
         )
+# 먼저 터미널에 설치: pip install korean-lunar-calendar
+from korean_lunar_calendar import KoreanLunarCalendar
+
+def get_saju_data(year, month, day, hour):
+    # 1. 만세력 도구 가져오기
+    calendar = KoreanLunarCalendar()
+    # 2. 양력 날짜를 넣어서 사주 글자 뽑기
+    calendar.setSolarDate(year, month, day)
+    
+    # 3. 사주 팔자 글자들 (예: 경오, 무인..)
+    gapja = calendar.getGapjaString() 
+    
+    # 4. 오행 점수 계산기 (아주 단순화한 버전)
+    # 실제로는 '갑/을=목', '병/정=화' 식으로 매칭합니다.
+    element_scores = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
+    
+    # 예시: 사주 글자에 특정 한자가 포함되면 점수 플러스!
+    if "甲" in gapja or "乙" in gapja: element_scores["목"] += 20
+    if "丙" in gapja or "丁" in gapja: element_scores["화"] += 20
+    # ... 이런식으로 8글자를 다 검사합니다.
+    
+    return gapja, element_scores
+
+# --- 스트림릿 화면에서 사용 예시 ---
+st.header("🔮 사주 분석 엔진 가동")
+if uploaded_file:
+    for index, row in df.iterrows():
+        # 엑셀에 '년', '월', '일' 컬럼이 있다고 가정
+        gapja_text, scores = get_saju_data(row['년'], row['월'], row['일'], 12)
+        st.write(f"### {row['이름']} 님의 사주: {gapja_text}")
+        
+        # 이 점수를 아까 만든 Matplotlib 그래프에 연결!
+        fig, ax = plt.subplots()
+        ax.bar(scores.keys(), scores.values(), color=['green', 'red', 'yellow', 'gray', 'blue'])
+        st.pyplot(fig)
+
+from korean_lunar_calendar import KoreanLunarCalendar
+
+def 사주_계산기(연, 월, 일):
+    calendar = KoreanLunarCalendar()
+    
+    # 1. 양력 날짜를 설정합니다.
+    calendar.setSolarDate(연, 월, 일)
+    
+    # 2. 사주 팔자(간지)를 한자로 가져옵니다.
+    # 예: "庚午年 戊寅月 丙戌日" 이런 식으로 나옵니다.
+    간지_결과 = calendar.getGapjaString()
+    
+    return 간지_결과
