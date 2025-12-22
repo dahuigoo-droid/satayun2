@@ -5,9 +5,25 @@ from datetime import datetime
 import zipfile
 import io
 import os
+from korean_lunar_calendar import KoreanLunarCalendar
 
 from saju_calculator import calc_사주
 from image_generator import create_원국표
+
+# ============================================
+# 음력 → 양력 변환 함수
+# ============================================
+def 음력_to_양력(year, month, day):
+    """음력 날짜를 양력으로 변환"""
+    calendar = KoreanLunarCalendar()
+    calendar.setLunarDate(year, month, day, False)  # False = 평달
+    return calendar.solarYear, calendar.solarMonth, calendar.solarDay
+
+def 양력_to_음력(year, month, day):
+    """양력 날짜를 음력으로 변환"""
+    calendar = KoreanLunarCalendar()
+    calendar.setSolarDate(year, month, day)
+    return calendar.lunarYear, calendar.lunarMonth, calendar.lunarDay
 
 # ============================================
 # 페이지 설정
@@ -54,11 +70,26 @@ with tab1:
             st.error("이름을 입력해주세요.")
         else:
             with st.spinner("이미지 생성 중..."):
-                # 사주 계산
-                year = 생년월일.year
-                month = 생년월일.month
-                day = 생년월일.day
+                # 입력 날짜
+                input_year = 생년월일.year
+                input_month = 생년월일.month
+                input_day = 생년월일.day
                 
+                # 음력/양력 변환
+                if 음양력 == "음력":
+                    # 음력 → 양력 변환
+                    year, month, day = 음력_to_양력(input_year, input_month, input_day)
+                    음력_str = f"{input_year}-{input_month:02d}-{input_day:02d}"
+                    양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
+                else:
+                    # 양력 그대로
+                    year, month, day = input_year, input_month, input_day
+                    양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
+                    # 양력 → 음력 변환 (표시용)
+                    음력_year, 음력_month, 음력_day = 양력_to_음력(year, month, day)
+                    음력_str = f"{음력_year}-{음력_month:02d}-{음력_day:02d}"
+                
+                # 사주 계산 (항상 양력으로)
                 사주 = calc_사주(year, month, day, 시, 분)
                 
                 # 나이 계산
@@ -70,8 +101,8 @@ with tab1:
                     '이름': 이름,
                     '성별': 성별,
                     '나이': 나이,
-                    '양력': f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}",
-                    '음력': f"{음양력} 기준",
+                    '양력': 양력_str,
+                    '음력': 음력_str,
                 }
                 
                 # 이미지 생성
@@ -155,25 +186,35 @@ with tab2:
                 for idx, row in df.iterrows():
                     status.text(f"처리 중: {row['이름']} ({idx+1}/{len(df)})")
                     
-                    # 사주 계산
-                    사주 = calc_사주(
-                        int(row['생년']), 
-                        int(row['생월']), 
-                        int(row['생일']), 
-                        int(row['시']), 
-                        int(row['분'])
-                    )
+                    # 입력 날짜
+                    input_year = int(row['생년'])
+                    input_month = int(row['생월'])
+                    input_day = int(row['생일'])
+                    
+                    # 음력/양력 변환
+                    if row['음양력'] == "음력":
+                        year, month, day = 음력_to_양력(input_year, input_month, input_day)
+                        음력_str = f"{input_year}-{input_month:02d}-{input_day:02d}"
+                        양력_str = f"{year}-{month:02d}-{day:02d} {int(row['시']):02d}:{int(row['분']):02d}"
+                    else:
+                        year, month, day = input_year, input_month, input_day
+                        양력_str = f"{year}-{month:02d}-{day:02d} {int(row['시']):02d}:{int(row['분']):02d}"
+                        음력_year, 음력_month, 음력_day = 양력_to_음력(year, month, day)
+                        음력_str = f"{음력_year}-{음력_month:02d}-{음력_day:02d}"
+                    
+                    # 사주 계산 (항상 양력으로)
+                    사주 = calc_사주(year, month, day, int(row['시']), int(row['분']))
                     
                     # 나이 계산
-                    나이 = datetime.now().year - int(row['생년']) + 1
+                    나이 = datetime.now().year - year + 1
                     
                     # 기본정보
                     기본정보 = {
                         '이름': row['이름'],
                         '성별': row['성별'],
                         '나이': 나이,
-                        '양력': f"{row['생년']}-{row['생월']:02d}-{row['생일']:02d} {row['시']:02d}:{row['분']:02d}",
-                        '음력': f"{row['음양력']} 기준",
+                        '양력': 양력_str,
+                        '음력': 음력_str,
                     }
                     
                     # 이미지 생성
