@@ -309,20 +309,610 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png"):
 
 
 # ============================================
-# 테스트
+# 대운표 이미지 생성
 # ============================================
-if __name__ == "__main__":
-    from saju_calculator import calc_사주
+def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
+    """
+    대운표 이미지 생성
     
-    # 구대회 테스트
-    사주 = calc_사주(1981, 3, 13, 3, 30)
-    기본정보 = {
-        '이름': '구대회',
-        '성별': '남성',
-        '나이': 45,
-        '양력': '1981-03-13 03:30',
-        '음력': '1981-02-08',
+    대운_data: calc_대운() 결과
+    기본정보: {'이름': ..., '성별': ..., ...}
+    """
+    
+    대운_list = 대운_data['대운']
+    대운수 = 대운_data['대운수']
+    순행 = 대운_data['순행']
+    사주 = 대운_data['사주']
+    일간 = 사주['일주'][0]
+    
+    # 이미지 크기
+    num_cols = len(대운_list)
+    cell_width = 80
+    label_width = 70
+    width = label_width + (cell_width * num_cols) + 20
+    height = 400
+    
+    # 이미지 생성
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    # 폰트
+    font_title = get_font(14)
+    font_large = get_font(28, bold=True)
+    font_medium = get_font(12)
+    font_small = get_font(10)
+    
+    # ========== 상단 제목 ==========
+    y_start = 15
+    방향 = "순행" if 순행 else "역행"
+    title = f"전통나이(대운수:{대운수}, {방향})"
+    draw.text((width // 2, y_start), title, font=font_title, fill='#333333', anchor='mm')
+    
+    # ========== 대운표 테이블 ==========
+    table_y = 40
+    cell_height_small = 25
+    cell_height_main = 55
+    
+    current_y = table_y
+    
+    # ========== 나이 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F0F0F0', outline='#E0E0E0')
+    
+    for i, 대운 in enumerate(대운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#F0F0F0', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  str(대운['나이']), font=font_medium, fill='#333333', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 천간 십성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "십성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 대운 in enumerate(대운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  대운['천간_십성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 천간 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_main],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_main // 2), "천간",
+              font=font_medium, fill='#666666', anchor='mm')
+    
+    for i, 대운 in enumerate(대운_list):
+        x = label_width + i * cell_width
+        천간 = 대운['천간']
+        오행 = 천간_오행_map[천간]
+        bg_color = 오행_색상[오행]['천간_bg']
+        text_color = 오행_색상[오행]['text']
+        
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
+                       fill=bg_color, outline='#E0E0E0')
+        
+        한자 = 천간_한자[천간]
+        display_text = f"{천간}({한자})"
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
+                  display_text, font=font_large, fill=text_color, anchor='mm')
+        
+        # 오행 표시
+        draw.text((x + cell_width - 12, current_y + cell_height_main - 12),
+                  오행, font=font_small, fill=text_color, anchor='mm')
+    
+    current_y += cell_height_main
+    
+    # ========== 지지 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_main],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_main // 2), "지지",
+              font=font_medium, fill='#666666', anchor='mm')
+    
+    for i, 대운 in enumerate(대운_list):
+        x = label_width + i * cell_width
+        지지 = 대운['지지']
+        오행 = 지지_오행_map[지지]
+        bg_color = 오행_색상[오행]['지지_bg']
+        text_color = 오행_색상[오행]['text']
+        
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
+                       fill=bg_color, outline='#E0E0E0')
+        
+        한자 = 지지_한자[지지]
+        display_text = f"{지지}({한자})"
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
+                  display_text, font=font_large, fill=text_color, anchor='mm')
+        
+        # 오행 표시
+        draw.text((x + cell_width - 12, current_y + cell_height_main - 12),
+                  오행, font=font_small, fill=text_color, anchor='mm')
+    
+    current_y += cell_height_main
+    
+    # ========== 지지 십성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "지지십성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 대운 in enumerate(대운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  대운['지지_십성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 12운성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "12운성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 대운 in enumerate(대운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  대운['12운성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 12신살 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "12신살",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 대운 in enumerate(대운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  대운['12신살'], font=font_small, fill='#888888', anchor='mm')
+    
+    # 저장
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 세운표 이미지 생성
+# ============================================
+def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
+    """
+    세운표 이미지 생성 (10년)
+    """
+    
+    세운_list = 세운_data['세운']
+    사주 = 세운_data['사주']
+    일간 = 사주['일주'][0]
+    
+    # 이미지 크기
+    num_cols = len(세운_list)
+    cell_width = 75
+    label_width = 70
+    width = label_width + (cell_width * num_cols) + 20
+    height = 380
+    
+    # 이미지 생성
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    # 폰트
+    font_title = get_font(14)
+    font_large = get_font(24, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(9)
+    
+    # ========== 상단 제목 ==========
+    y_start = 15
+    draw.text((width // 2, y_start), "세운표 (10년)", font=font_title, fill='#333333', anchor='mm')
+    
+    # ========== 테이블 ==========
+    table_y = 40
+    cell_height_small = 22
+    cell_height_main = 50
+    
+    current_y = table_y
+    
+    # ========== 년도 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F0F0F0', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "년도",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#F0F0F0', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  str(세운['년도']), font=font_small, fill='#333333', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 나이 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F0F0F0', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "나이",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#F0F0F0', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  str(세운['나이']), font=font_small, fill='#333333', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 천간 십성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "십성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  세운['천간_십성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 천간 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_main],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_main // 2), "천간",
+              font=font_medium, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        천간 = 세운['천간']
+        오행 = 천간_오행_map[천간]
+        bg_color = 오행_색상[오행]['천간_bg']
+        text_color = 오행_색상[오행]['text']
+        
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
+                       fill=bg_color, outline='#E0E0E0')
+        
+        한자 = 천간_한자[천간]
+        display_text = f"{천간}({한자})"
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2),
+                  display_text, font=font_large, fill=text_color, anchor='mm')
+    
+    current_y += cell_height_main
+    
+    # ========== 지지 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_main],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_main // 2), "지지",
+              font=font_medium, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        지지 = 세운['지지']
+        오행 = 지지_오행_map[지지]
+        bg_color = 오행_색상[오행]['지지_bg']
+        text_color = 오행_색상[오행]['text']
+        
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
+                       fill=bg_color, outline='#E0E0E0')
+        
+        한자 = 지지_한자[지지]
+        display_text = f"{지지}({한자})"
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2),
+                  display_text, font=font_large, fill=text_color, anchor='mm')
+    
+    current_y += cell_height_main
+    
+    # ========== 지지 십성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "지지십성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  세운['지지_십성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 12운성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "12운성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  세운['12운성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 12신살 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "12신살",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 세운 in enumerate(세운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  세운['12신살'], font=font_small, fill='#888888', anchor='mm')
+    
+    # 저장
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 월운표 이미지 생성
+# ============================================
+def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
+    """
+    월운표 이미지 생성 (12개월)
+    """
+    
+    월운_list = 월운_data['월운']
+    년도 = 월운_data['년도']
+    사주 = 월운_data['사주']
+    
+    # 이미지 크기
+    num_cols = 12
+    cell_width = 65
+    label_width = 70
+    width = label_width + (cell_width * num_cols) + 20
+    height = 350
+    
+    # 이미지 생성
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    # 폰트
+    font_title = get_font(14)
+    font_large = get_font(22, bold=True)
+    font_medium = get_font(10)
+    font_small = get_font(9)
+    
+    # ========== 상단 제목 ==========
+    y_start = 15
+    draw.text((width // 2, y_start), f"{년도}년 월운표", font=font_title, fill='#333333', anchor='mm')
+    
+    # ========== 테이블 ==========
+    table_y = 40
+    cell_height_small = 22
+    cell_height_main = 45
+    
+    current_y = table_y
+    
+    # ========== 월 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F0F0F0', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "월",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 월운 in enumerate(월운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#F0F0F0', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  f"{월운['월']}월", font=font_small, fill='#333333', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 천간 십성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "십성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 월운 in enumerate(월운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  월운['천간_십성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 천간 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_main],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_main // 2), "천간",
+              font=font_medium, fill='#666666', anchor='mm')
+    
+    for i, 월운 in enumerate(월운_list):
+        x = label_width + i * cell_width
+        천간 = 월운['천간']
+        오행 = 천간_오행_map[천간]
+        bg_color = 오행_색상[오행]['천간_bg']
+        text_color = 오행_색상[오행]['text']
+        
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
+                       fill=bg_color, outline='#E0E0E0')
+        
+        한자 = 천간_한자[천간]
+        display_text = f"{천간}({한자})"
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2),
+                  display_text, font=font_large, fill=text_color, anchor='mm')
+    
+    current_y += cell_height_main
+    
+    # ========== 지지 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_main],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_main // 2), "지지",
+              font=font_medium, fill='#666666', anchor='mm')
+    
+    for i, 월운 in enumerate(월운_list):
+        x = label_width + i * cell_width
+        지지 = 월운['지지']
+        오행 = 지지_오행_map[지지]
+        bg_color = 오행_색상[오행]['지지_bg']
+        text_color = 오행_색상[오행]['text']
+        
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
+                       fill=bg_color, outline='#E0E0E0')
+        
+        한자 = 지지_한자[지지]
+        display_text = f"{지지}({한자})"
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2),
+                  display_text, font=font_large, fill=text_color, anchor='mm')
+    
+    current_y += cell_height_main
+    
+    # ========== 지지 십성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "지지십성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 월운 in enumerate(월운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  월운['지지_십성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 12운성 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "12운성",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 월운 in enumerate(월운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  월운['12운성'], font=font_small, fill='#888888', anchor='mm')
+    
+    current_y += cell_height_small
+    
+    # ========== 12신살 행 ==========
+    draw.rectangle([0, current_y, label_width, current_y + cell_height_small],
+                   fill='#F9F9F9', outline='#E0E0E0')
+    draw.text((label_width // 2, current_y + cell_height_small // 2), "12신살",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    for i, 월운 in enumerate(월운_list):
+        x = label_width + i * cell_width
+        draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                       fill='#FFFFFF', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                  월운['12신살'], font=font_small, fill='#888888', anchor='mm')
+    
+    # 저장
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 오행 차트 이미지 생성
+# ============================================
+def create_오행차트(사주_data, 기본정보, output_path="오행차트.png"):
+    """
+    오행 분포 막대 차트 이미지 생성
+    """
+    
+    오행 = 사주_data['오행']
+    
+    # 이미지 크기
+    width = 500
+    height = 300
+    
+    # 이미지 생성
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    # 폰트
+    font_title = get_font(16)
+    font_medium = get_font(14)
+    font_small = get_font(12)
+    
+    # ========== 상단 제목 ==========
+    y_start = 20
+    draw.text((width // 2, y_start), f"{기본정보['이름']}님 오행 분포", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    # ========== 막대 차트 ==========
+    chart_y = 60
+    chart_height = 150
+    bar_width = 60
+    gap = 25
+    start_x = 60
+    
+    오행_목록 = ['목', '화', '토', '금', '수']
+    max_val = max(오행.values()) if max(오행.values()) > 0 else 1
+    
+    # 오행 색상 (차트용)
+    chart_colors = {
+        '목': '#4CAF50',  # 초록
+        '화': '#F44336',  # 빨강
+        '토': '#795548',  # 갈색
+        '금': '#FFC107',  # 노랑
+        '수': '#2196F3',  # 파랑
     }
     
-    output = create_원국표(사주, 기본정보, "test_원국표.png")
-    print(f"이미지 생성 완료: {output}")
+    for i, 오행명 in enumerate(오행_목록):
+        x = start_x + i * (bar_width + gap)
+        값 = 오행[오행명]
+        
+        # 막대 높이 계산
+        bar_height = int((값 / max_val) * chart_height) if 값 > 0 else 5
+        
+        # 막대 그리기
+        bar_y = chart_y + chart_height - bar_height
+        draw.rectangle([x, bar_y, x + bar_width, chart_y + chart_height],
+                       fill=chart_colors[오행명], outline='#333333')
+        
+        # 값 표시
+        draw.text((x + bar_width // 2, bar_y - 15),
+                  str(값), font=font_medium, fill='#333333', anchor='mm')
+        
+        # 오행명 표시
+        draw.text((x + bar_width // 2, chart_y + chart_height + 20),
+                  오행명, font=font_medium, fill='#333333', anchor='mm')
+    
+    # ========== 하단 요약 ==========
+    summary_y = chart_y + chart_height + 50
+    
+    # 강한 오행 / 약한 오행
+    sorted_오행 = sorted(오행.items(), key=lambda x: x[1], reverse=True)
+    강한_오행 = [k for k, v in sorted_오행 if v == sorted_오행[0][1]]
+    약한_오행 = [k for k, v in sorted_오행 if v == sorted_오행[-1][1]]
+    
+    draw.text((width // 2, summary_y),
+              f"강한 오행: {', '.join(강한_오행)}  |  약한 오행: {', '.join(약한_오행)}",
+              font=font_small, fill='#666666', anchor='mm')
+    
+    # 총 개수
+    total = sum(오행.values())
+    draw.text((width // 2, summary_y + 25),
+              f"총 {total}개 (목{오행['목']} 화{오행['화']} 토{오행['토']} 금{오행['금']} 수{오행['수']})",
+              font=font_small, fill='#888888', anchor='mm')
+    
+    # 저장
+    img.save(output_path, 'PNG')
+    return output_path

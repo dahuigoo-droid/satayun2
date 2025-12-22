@@ -7,8 +7,8 @@ import io
 import os
 from korean_lunar_calendar import KoreanLunarCalendar
 
-from saju_calculator import calc_사주
-from image_generator import create_원국표
+from saju_calculator import calc_사주, calc_대운, calc_세운, calc_월운
+from image_generator import create_원국표, create_대운표, create_세운표, create_월운표, create_오행차트
 
 # ============================================
 # 음력 → 양력 변환 함수
@@ -105,13 +105,22 @@ with tab1:
                     '음력': 음력_str,
                 }
                 
+                # 성별 변환 (대운 계산용)
+                gender = '남' if 성별 == '남성' else '여'
+                
                 # 이미지 생성
                 output_path = f"/tmp/{이름}_원국표.png"
                 create_원국표(사주, 기본정보, output_path)
                 
+                # 대운 계산 및 이미지 생성
+                대운_data = calc_대운(year, month, day, 시, 분, gender)
+                대운_output_path = f"/tmp/{이름}_대운표.png"
+                create_대운표(대운_data, 기본정보, 대운_output_path)
+                
                 st.success("✅ 이미지 생성 완료!")
                 
-                # 결과 표시
+                # 결과 표시 - 원국표
+                st.subheader("📊 원국표")
                 col1, col2 = st.columns([1, 1])
                 
                 with col1:
@@ -125,14 +134,88 @@ with tab1:
                     st.write(f"- 시주: {사주['시주'][0]}{사주['시주'][1]}")
                     st.write(f"- 오행: 목{사주['오행']['목']} 화{사주['오행']['화']} 토{사주['오행']['토']} 금{사주['오행']['금']} 수{사주['오행']['수']}")
                 
-                # 다운로드 버튼
+                # 원국표 다운로드 버튼
                 with open(output_path, "rb") as f:
                     st.download_button(
-                        label="📥 이미지 다운로드",
+                        label="📥 원국표 다운로드",
                         data=f,
                         file_name=f"{이름}_원국표.png",
                         mime="image/png",
                         use_container_width=True
+                    )
+                
+                # 대운표 표시
+                st.subheader("📈 대운표")
+                st.image(대운_output_path, caption=f"{이름}님 대운표")
+                
+                방향 = "순행" if 대운_data['순행'] else "역행"
+                st.write(f"**대운 정보:** 대운수 {대운_data['대운수']}세, {방향}")
+                
+                # 대운표 다운로드 버튼
+                with open(대운_output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 대운표 다운로드",
+                        data=f,
+                        file_name=f"{이름}_대운표.png",
+                        mime="image/png",
+                        use_container_width=True,
+                        key="download_대운표"
+                    )
+                
+                # 세운 계산 및 이미지 생성
+                세운_data = calc_세운(year, month, day, 시, 분)
+                세운_output_path = f"/tmp/{이름}_세운표.png"
+                create_세운표(세운_data, 기본정보, 세운_output_path)
+                
+                # 세운표 표시
+                st.subheader("📅 세운표 (10년)")
+                st.image(세운_output_path, caption=f"{이름}님 세운표")
+                
+                with open(세운_output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 세운표 다운로드",
+                        data=f,
+                        file_name=f"{이름}_세운표.png",
+                        mime="image/png",
+                        use_container_width=True,
+                        key="download_세운표"
+                    )
+                
+                # 월운 계산 및 이미지 생성
+                월운_data = calc_월운(year, month, day, 시, 분)
+                월운_output_path = f"/tmp/{이름}_월운표.png"
+                create_월운표(월운_data, 기본정보, 월운_output_path)
+                
+                # 월운표 표시
+                st.subheader("🗓️ 월운표 (12개월)")
+                st.image(월운_output_path, caption=f"{이름}님 월운표")
+                
+                with open(월운_output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 월운표 다운로드",
+                        data=f,
+                        file_name=f"{이름}_월운표.png",
+                        mime="image/png",
+                        use_container_width=True,
+                        key="download_월운표"
+                    )
+                
+                # 오행 차트 이미지 생성
+                오행_output_path = f"/tmp/{이름}_오행차트.png"
+                create_오행차트(사주, 기본정보, 오행_output_path)
+                
+                # 오행 차트 표시
+                st.subheader("🔥 오행 분포")
+                st.image(오행_output_path, caption=f"{이름}님 오행 차트")
+                
+                with open(오행_output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 오행차트 다운로드",
+                        data=f,
+                        file_name=f"{이름}_오행차트.png",
+                        mime="image/png",
+                        use_container_width=True,
+                        key="download_오행차트"
                     )
 
 # ============================================
@@ -217,13 +300,39 @@ with tab2:
                         '음력': 음력_str,
                     }
                     
-                    # 이미지 생성
+                    # 성별 변환
+                    gender = '남' if row['성별'] == '남성' else '여'
+                    
+                    # 원국표 이미지 생성
                     output_path = f"/tmp/{row['이름']}_원국표.png"
                     create_원국표(사주, 기본정보, output_path)
+                    
+                    # 대운 계산 및 이미지 생성
+                    대운_data = calc_대운(year, month, day, int(row['시']), int(row['분']), gender)
+                    대운_output_path = f"/tmp/{row['이름']}_대운표.png"
+                    create_대운표(대운_data, 기본정보, 대운_output_path)
+                    
+                    # 세운 계산 및 이미지 생성
+                    세운_data = calc_세운(year, month, day, int(row['시']), int(row['분']))
+                    세운_output_path = f"/tmp/{row['이름']}_세운표.png"
+                    create_세운표(세운_data, 기본정보, 세운_output_path)
+                    
+                    # 월운 계산 및 이미지 생성
+                    월운_data = calc_월운(year, month, day, int(row['시']), int(row['분']))
+                    월운_output_path = f"/tmp/{row['이름']}_월운표.png"
+                    create_월운표(월운_data, 기본정보, 월운_output_path)
+                    
+                    # 오행 차트 이미지 생성
+                    오행_output_path = f"/tmp/{row['이름']}_오행차트.png"
+                    create_오행차트(사주, 기본정보, 오행_output_path)
                     
                     # ZIP에 추가 (폴더 구조)
                     folder_name = f"{row['이름']}_{row['생년']}-{row['생월']:02d}-{row['생일']:02d}"
                     zf.write(output_path, f"{folder_name}/원국표.png")
+                    zf.write(대운_output_path, f"{folder_name}/대운표.png")
+                    zf.write(세운_output_path, f"{folder_name}/세운표.png")
+                    zf.write(월운_output_path, f"{folder_name}/월운표.png")
+                    zf.write(오행_output_path, f"{folder_name}/오행차트.png")
                     
                     progress.progress((idx + 1) / len(df))
             
@@ -253,10 +362,10 @@ with st.sidebar:
     
     st.header("📊 생성할 이미지")
     원국표_체크 = st.checkbox("원국표", value=True)
-    대운표_체크 = st.checkbox("대운표", value=False, disabled=True)
-    세운표_체크 = st.checkbox("세운표", value=False, disabled=True)
-    월운표_체크 = st.checkbox("월운표", value=False, disabled=True)
-    오행차트_체크 = st.checkbox("오행 차트", value=False, disabled=True)
+    대운표_체크 = st.checkbox("대운표", value=True)
+    세운표_체크 = st.checkbox("세운표", value=True)
+    월운표_체크 = st.checkbox("월운표", value=True)
+    오행차트_체크 = st.checkbox("오행 차트", value=True)
     
     st.divider()
     st.caption("v1.0 - 사주 이미지 생성기")
