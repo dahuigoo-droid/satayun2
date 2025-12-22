@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from reportlab.pdfgen import canvas
 import io
 from korean_lunar_calendar import KoreanLunarCalendar
+from PIL import Image
 
 # 1. 사주 계산 함수
 def get_saju_data(year, month, day):
@@ -21,52 +22,60 @@ def get_saju_data(year, month, day):
     except:
         return "날짜 오류", {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
 
-# 2. 화면 설정 (전체 넓게 사용)
+# 2. 화면 설정
 st.set_page_config(page_title="사주/타로 PDF 생성기", layout="wide")
-st.title("🔮 사주/타로 PDF 자동 생성 시스템")
+st.title("🔮 사주/타로 리포트 커스터마이징 시스템")
 
+# --- 3. 이미지 업로드 섹션 (새로 추가됨) ---
+st.divider()
+st.header("🖼️ PDF 디자인 이미지 설정")
+img_col1, img_col2, img_col3 = st.columns(3)
+
+with img_col1:
+    st.subheader("1. 표지 이미지")
+    cover_img = st.file_uploader("표지(첫장) 업로드", type=["png", "jpg", "jpeg"], key="cover")
+    if cover_img:
+        st.image(cover_img, caption="업로드된 표지", width=150)
+
+with img_col2:
+    st.subheader("2. 내지 배경")
+    body_img = st.file_uploader("본문 배경 업로드", type=["png", "jpg", "jpeg"], key="body")
+    if body_img:
+        st.image(body_img, caption="업로드된 내지", width=150)
+
+with img_col3:
+    st.subheader("3. 마지막 안내지")
+    tail_img = st.file_uploader("마지막장 업로드", type=["png", "jpg", "jpeg"], key="tail")
+    if tail_img:
+        st.image(tail_img, caption="업로드된 안내지", width=150)
+
+# --- 4. 리포트 기본 설정 (좌우 배치) ---
 st.divider()
 st.header("⚙️ 리포트 기본 설정")
-
-# --- 좌우 나란히 배치하는 부분 ---
-# 화면을 1:1 비율로 두 개의 기둥(col1, col2)으로 나눕니다.
 col1, col2 = st.columns(2)
 
 with col1:
     toc_list = st.text_area("📋 PDF 목차 (리포트 순서)", 
                            value="1. 타고난 기질\n2. 올해의 연애운\n3. 타로 카드의 조언", 
-                           height=200) # 높이를 충분히 주어 내용이 다 보이게 함
+                           height=150)
 
 with col2:
     ai_guide = st.text_area("🤖 AI 상담사 지침 (말투 및 스타일)", 
                            value="친절하고 상세하게 설명해주는 전문가 스타일로 작성하세요.", 
-                           height=200)
+                           height=150)
 
+# 5. 엑셀 파일 업로드
 st.divider()
-
-# 3. 엑셀 파일 업로드
-st.header("📂 1. 고객 데이터 업로드")
+st.header("📂 2. 고객 데이터 업로드")
 uploaded_file = st.file_uploader("고객 정보 엑셀 파일(.xlsx)을 업로드하세요.", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
     st.success(f"총 {len(df)}명의 데이터를 확인했습니다.")
     
-    st.header("📊 2. 고객별 사주 분석 결과")
-    
-    for index, row in df.iterrows():
-        name = row.get('이름', f'고객{index+1}')
-        y, m, d = row.get('년', 1990), row.get('월', 1), row.get('일', 1)
-        gapja_text, element_scores = get_saju_data(y, m, d)
-        
-        with st.expander(f"👤 {name} 님의 사주 분석 결과"):
-            st.write(f"**사주 팔자:** {gapja_text}")
-            fig, ax = plt.subplots(figsize=(10, 2)) # 분석 그래프도 가로로 길게
-            colors = ['#2ECC71', '#E74C3C', '#F1C40F', '#BDC3C7', '#3498DB']
-            ax.bar(element_scores.keys(), element_scores.values(), color=colors)
-            st.pyplot(fig)
-
-    # 4. PDF 생성 버튼
-    st.divider()
-    if st.button("📄 모든 결과 PDF로 한꺼번에 만들기"):
-        st.info("PDF 생성 기능을 준비 중입니다...")
+    # PDF 생성 버튼 (기능은 추후 이미지 합성 로직 추가 예정)
+    if st.button("📄 설정된 이미지와 내용으로 PDF 생성하기"):
+        if not cover_img or not body_img or not tail_img:
+            st.warning("표지, 내지, 안내지 이미지를 모두 업로드해야 완벽한 PDF가 생성됩니다.")
+        else:
+            st.info("현재 설정된 이미지와 데이터를 바탕으로 PDF를 굽고 있습니다... (잠시만 기다려주세요)")
