@@ -5,22 +5,23 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-import io, time, urllib.request
+import io, time, urllib.request, os # os를 제대로 불러왔습니다.
 from korean_lunar_calendar import KoreanLunarCalendar
 
-# [중요] 한글 안 깨지게 폰트 자동 설치
+# [1] 한글 폰트 자동 설치 (에러 수정 완료)
 @st.cache_resource
 def load_hangeul_font():
     font_url = "https://github.com/googlefonts/nanumgothic/raw/main/fonts/NanumGothic-Regular.ttf"
     font_path = "NanumGothic.ttf"
-    if not io.os.path.exists(font_path):
+    # io.os 대신 os.path로 수정했습니다.
+    if not os.path.exists(font_path):
         urllib.request.urlretrieve(font_url, font_path)
     pdfmetrics.registerFont(TTFont('Hangeul', font_path))
     return 'Hangeul'
 
 FONT = load_hangeul_font()
 
-# 화면 넓게 쓰기 설정
+# 화면 설정
 st.set_page_config(page_title="사주 PDF 마스터", layout="wide")
 st.title("🔮 사주/타로 리포트 생성기")
 
@@ -40,18 +41,14 @@ with i3: tl_img = st.file_uploader("안내지(3p)", type=["png", "jpg"])
 st.divider()
 st.header("📂 2. 데이터 관리")
 
-# 초기화 버튼
-if st.button("🔄 모든 정보 지우기(초기화)"):
+if st.button("🔄 전체 초기화"):
     st.rerun()
 
 up_file = st.file_uploader("엑셀 파일(.xlsx) 업로드", type=["xlsx"])
 
 if up_file:
     df = pd.read_excel(up_file)
-    st.subheader("📊 업로드된 고객 데이터")
-    st.dataframe(df, use_container_width=True) # 엑셀 내용 노출
-
-    st.subheader("✅ 출력할 고객 선택")
+    st.subheader("📊 고객 목록 및 선택")
     sel_all = st.checkbox("전체 선택")
     
     selected = []
@@ -73,22 +70,24 @@ if up_file:
             p = canvas.Canvas(pdf_io, pagesize=A4)
             w, h = A4
             
+            # 이미지 읽기
             c_r, b_r, t_r = ImageReader(cv_img), ImageReader(bd_img), ImageReader(tl_img)
 
             for idx, target_i in enumerate(selected):
                 row = df.iloc[target_i]
-                name = row.get('이름', '고객')
+                name = str(row.get('이름', '고객'))
                 
-                # 진행 상태 표시
                 msg.text(f"⏳ {name}님 작업 중... ({idx+1}/{len(selected)})")
                 
-                # 표지 -> 내지 -> 안내지 순서로 생성
+                # 표지
                 p.drawImage(c_r, 0, 0, width=w, height=h)
                 p.setFont(FONT, 30); p.drawCentredString(w/2, h/2, f"{name}님 리포트"); p.showPage()
                 
+                # 내지
                 p.drawImage(b_r, 0, 0, width=w, height=h)
                 p.setFont(FONT, 20); p.drawString(100, 700, f"성함: {name}"); p.showPage()
                 
+                # 안내지
                 p.drawImage(t_r, 0, 0, width=w, height=h)
                 p.showPage()
                 
