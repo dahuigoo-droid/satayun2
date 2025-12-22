@@ -1687,24 +1687,25 @@ def show_service_edit_form(svc: dict, prefix: str):
         current_guideline = guidelines[0]['content'] if guidelines else ""
         edit_guideline = st.text_area("지침", value=current_guideline, height=300, key=f"{prefix}_g_{svc_id}")
     
-    # 폰트 설정 (expander로 숨김 - 기본값 사용 권장)
-    with st.expander("⚙️ 폰트/디자인 설정", expanded=False):
-        font_defaults = {k: svc.get(k, v) for k, v in 
-                         {"font_family": "NanumGothic", "font_size_title": 24, "font_size_subtitle": 16,
-                          "font_size_body": 12, "letter_spacing": 0, "line_height": 180, "char_width": 100,
-                          "margin_top": 25, "margin_bottom": 25, "margin_left": 25, "margin_right": 25,
-                          "target_pages": 30}.items()}
-        font_settings = render_font_settings(f"{prefix}_{svc_id}", font_defaults)
-        
-        st.markdown("**🖼️ 디자인**")
-        t_cols = st.columns(3)
-        for idx, tt in enumerate(["cover", "background", "info"]):
-            with t_cols[idx]:
-                t_list = [t for t in templates if t['template_type'] == tt]
-                # 이미지 미리보기 (존재할 때만)
-                if t_list and t_list[0].get('image_path') and os.path.exists(t_list[0]['image_path']):
-                    st.image(t_list[0]['image_path'], width=60, caption=TEMPLATE_TYPES[tt])
-                st.file_uploader(TEMPLATE_TYPES[tt], type=["jpg","jpeg","png"], key=f"{prefix}_{tt}_{svc_id}")
+    # 폰트 설정 (토글 대신 일반 섹션으로 표시)
+    st.markdown("---")
+    st.markdown("**⚙️ 폰트/디자인 설정**")
+    font_defaults = {k: svc.get(k, v) for k, v in 
+                     {"font_family": "NanumGothic", "font_size_title": 24, "font_size_subtitle": 16,
+                      "font_size_body": 12, "letter_spacing": 0, "line_height": 180, "char_width": 100,
+                      "margin_top": 25, "margin_bottom": 25, "margin_left": 25, "margin_right": 25,
+                      "target_pages": 30}.items()}
+    font_settings = render_font_settings(f"{prefix}_{svc_id}", font_defaults)
+    
+    st.markdown("**🖼️ 디자인**")
+    t_cols = st.columns(3)
+    for idx, tt in enumerate(["cover", "background", "info"]):
+        with t_cols[idx]:
+            t_list = [t for t in templates if t['template_type'] == tt]
+            # 이미지 미리보기 (존재할 때만)
+            if t_list and t_list[0].get('image_path') and os.path.exists(t_list[0]['image_path']):
+                st.image(t_list[0]['image_path'], width=60, caption=TEMPLATE_TYPES[tt])
+            st.file_uploader(TEMPLATE_TYPES[tt], type=["jpg","jpeg","png"], key=f"{prefix}_{tt}_{svc_id}")
     
     # 저장/삭제 버튼
     col1, col2 = st.columns(2)
