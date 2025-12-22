@@ -1,0 +1,221 @@
+# 사주/타로/연애 이미지 자동 생성기
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import zipfile
+import io
+import os
+
+from saju_calculator import calc_사주
+from image_generator import create_원국표
+
+# ============================================
+# 페이지 설정
+# ============================================
+st.set_page_config(
+    page_title="사주 이미지 생성기",
+    page_icon="🔮",
+    layout="wide"
+)
+
+st.title("🔮 사주/타로/연애 이미지 생성기")
+
+# ============================================
+# 탭 구성
+# ============================================
+tab1, tab2 = st.tabs(["📝 개별 입력", "📊 엑셀 일괄 처리"])
+
+# ============================================
+# 탭1: 개별 입력
+# ============================================
+with tab1:
+    st.subheader("고객 정보 입력")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        이름 = st.text_input("이름", placeholder="홍길동")
+        성별 = st.radio("성별", ["남성", "여성"], horizontal=True)
+        생년월일 = st.date_input("생년월일", datetime(1990, 1, 1))
+    
+    with col2:
+        시간_col1, 시간_col2 = st.columns(2)
+        with 시간_col1:
+            시 = st.number_input("시", min_value=0, max_value=23, value=12)
+        with 시간_col2:
+            분 = st.number_input("분", min_value=0, max_value=59, value=0)
+        
+        음양력 = st.radio("음력/양력", ["양력", "음력"], horizontal=True)
+    
+    st.divider()
+    
+    if st.button("🎯 이미지 생성", type="primary", use_container_width=True):
+        if not 이름:
+            st.error("이름을 입력해주세요.")
+        else:
+            with st.spinner("이미지 생성 중..."):
+                # 사주 계산
+                year = 생년월일.year
+                month = 생년월일.month
+                day = 생년월일.day
+                
+                사주 = calc_사주(year, month, day, 시, 분)
+                
+                # 나이 계산
+                today = datetime.now()
+                나이 = today.year - year + 1  # 한국 나이
+                
+                # 기본정보
+                기본정보 = {
+                    '이름': 이름,
+                    '성별': 성별,
+                    '나이': 나이,
+                    '양력': f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}",
+                    '음력': f"{음양력} 기준",
+                }
+                
+                # 이미지 생성
+                output_path = f"/tmp/{이름}_원국표.png"
+                create_원국표(사주, 기본정보, output_path)
+                
+                st.success("✅ 이미지 생성 완료!")
+                
+                # 결과 표시
+                col1, col2 = st.columns([1, 1])
+                
+                with col1:
+                    st.image(output_path, caption=f"{이름}님 원국표")
+                
+                with col2:
+                    st.write("**사주 정보:**")
+                    st.write(f"- 년주: {사주['년주'][0]}{사주['년주'][1]}")
+                    st.write(f"- 월주: {사주['월주'][0]}{사주['월주'][1]}")
+                    st.write(f"- 일주: {사주['일주'][0]}{사주['일주'][1]}")
+                    st.write(f"- 시주: {사주['시주'][0]}{사주['시주'][1]}")
+                    st.write(f"- 오행: 목{사주['오행']['목']} 화{사주['오행']['화']} 토{사주['오행']['토']} 금{사주['오행']['금']} 수{사주['오행']['수']}")
+                
+                # 다운로드 버튼
+                with open(output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 이미지 다운로드",
+                        data=f,
+                        file_name=f"{이름}_원국표.png",
+                        mime="image/png",
+                        use_container_width=True
+                    )
+
+# ============================================
+# 탭2: 엑셀 일괄 처리
+# ============================================
+with tab2:
+    st.subheader("엑셀 파일 업로드")
+    
+    # 샘플 다운로드
+    sample_data = {
+        '이름': ['홍길동', '김철수'],
+        '성별': ['남성', '여성'],
+        '생년': [1990, 1985],
+        '생월': [5, 12],
+        '생일': [15, 3],
+        '시': [14, 8],
+        '분': [30, 0],
+        '음양력': ['양력', '양력'],
+    }
+    sample_df = pd.DataFrame(sample_data)
+    
+    # 샘플 엑셀 다운로드
+    buffer = io.BytesIO()
+    sample_df.to_excel(buffer, index=False, engine='openpyxl')
+    buffer.seek(0)
+    
+    st.download_button(
+        label="📋 샘플 엑셀 다운로드",
+        data=buffer,
+        file_name="sample_input.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    
+    st.divider()
+    
+    uploaded_file = st.file_uploader("엑셀 파일 선택", type=['xlsx', 'xls'])
+    
+    if uploaded_file:
+        df = pd.read_excel(uploaded_file)
+        st.write(f"**{len(df)}명 데이터 확인:**")
+        st.dataframe(df, use_container_width=True)
+        
+        if st.button("🎯 일괄 생성", type="primary", use_container_width=True):
+            progress = st.progress(0)
+            status = st.empty()
+            
+            # ZIP 파일 생성
+            zip_buffer = io.BytesIO()
+            
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for idx, row in df.iterrows():
+                    status.text(f"처리 중: {row['이름']} ({idx+1}/{len(df)})")
+                    
+                    # 사주 계산
+                    사주 = calc_사주(
+                        int(row['생년']), 
+                        int(row['생월']), 
+                        int(row['생일']), 
+                        int(row['시']), 
+                        int(row['분'])
+                    )
+                    
+                    # 나이 계산
+                    나이 = datetime.now().year - int(row['생년']) + 1
+                    
+                    # 기본정보
+                    기본정보 = {
+                        '이름': row['이름'],
+                        '성별': row['성별'],
+                        '나이': 나이,
+                        '양력': f"{row['생년']}-{row['생월']:02d}-{row['생일']:02d} {row['시']:02d}:{row['분']:02d}",
+                        '음력': f"{row['음양력']} 기준",
+                    }
+                    
+                    # 이미지 생성
+                    output_path = f"/tmp/{row['이름']}_원국표.png"
+                    create_원국표(사주, 기본정보, output_path)
+                    
+                    # ZIP에 추가 (폴더 구조)
+                    folder_name = f"{row['이름']}_{row['생년']}-{row['생월']:02d}-{row['생일']:02d}"
+                    zf.write(output_path, f"{folder_name}/원국표.png")
+                    
+                    progress.progress((idx + 1) / len(df))
+            
+            status.text("✅ 완료!")
+            
+            # ZIP 다운로드
+            zip_buffer.seek(0)
+            st.download_button(
+                label="📥 전체 다운로드 (ZIP)",
+                data=zip_buffer,
+                file_name="사주_이미지_결과.zip",
+                mime="application/zip",
+                use_container_width=True
+            )
+
+# ============================================
+# 사이드바
+# ============================================
+with st.sidebar:
+    st.header("🔮 서비스 선택")
+    서비스 = st.radio(
+        "생성할 이미지 종류",
+        ["사주", "타로 (준비중)", "연애상담 (준비중)"]
+    )
+    
+    st.divider()
+    
+    st.header("📊 생성할 이미지")
+    원국표_체크 = st.checkbox("원국표", value=True)
+    대운표_체크 = st.checkbox("대운표", value=False, disabled=True)
+    세운표_체크 = st.checkbox("세운표", value=False, disabled=True)
+    월운표_체크 = st.checkbox("월운표", value=False, disabled=True)
+    오행차트_체크 = st.checkbox("오행 차트", value=False, disabled=True)
+    
+    st.divider()
+    st.caption("v1.0 - 사주 이미지 생성기")
