@@ -5,27 +5,27 @@
 """
 
 import os
+import streamlit as st
 from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
 # ============================================
-# Streamlit Cloud 환경변수 읽기
+# 환경변수/Secrets에서 DATABASE_URL 읽기
 # ============================================
 
 DATABASE_URL = None
 
-# 방법 1: Streamlit secrets
-try:
-    import streamlit as st
-    DATABASE_URL = st.secrets["DATABASE_URL"]
-except:
-    pass
+# 방법 1: 환경변수 (Railway 등)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# 방법 2: 환경변수
+# 방법 2: Streamlit secrets (Streamlit Cloud)
 if not DATABASE_URL:
-    DATABASE_URL = os.environ.get("DATABASE_URL")
+    try:
+        DATABASE_URL = st.secrets.get("DATABASE_URL")
+    except:
+        pass
 
 # ============================================
 # 데이터베이스 엔진 생성 (캐싱)
