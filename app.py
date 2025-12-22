@@ -371,10 +371,15 @@ def verify_pdf_generation_ready(service_id: int, api_key: str) -> tuple:
     return True, errors
 
 def calculate_chars_per_page(font_size_body: int, line_height: int, margin_top: int, 
-                            margin_bottom: int, margin_left: int, margin_right: int) -> int:
+                            margin_bottom: int, margin_left: int, margin_right: int,
+                            char_width: int = 100, letter_spacing: int = 0) -> int:
     """폰트/여백 설정 기반 페이지당 글자 수 계산
     
     A4 크기: 210mm x 297mm
+    
+    Args:
+        char_width: 장평 (%, 100이 기본)
+        letter_spacing: 자간 (%, 0이 기본)
     """
     # A4 사이즈 (mm)
     page_width_mm = 210
@@ -386,7 +391,13 @@ def calculate_chars_per_page(font_size_body: int, line_height: int, margin_top: 
     
     # 글자 크기 (pt → mm 변환: 1pt ≈ 0.35mm)
     char_height_mm = font_size_body * 0.35
-    char_width_mm = font_size_body * 0.35 * 0.5  # 한글은 대략 정사각형의 절반 폭
+    # 장평 적용: 기본 한글 폭 * (장평/100)
+    base_char_width_mm = font_size_body * 0.35 * 0.5  # 한글 기본 폭
+    char_width_mm = base_char_width_mm * (char_width / 100)
+    
+    # 자간 적용: 글자 사이 추가 간격 (pt → mm)
+    letter_spacing_mm = font_size_body * 0.35 * (letter_spacing / 100)
+    effective_char_width_mm = char_width_mm + letter_spacing_mm
     
     # 행간 적용
     line_spacing_mm = char_height_mm * (line_height / 100)
@@ -394,8 +405,8 @@ def calculate_chars_per_page(font_size_body: int, line_height: int, margin_top: 
     # 페이지당 줄 수
     lines_per_page = int(usable_height / line_spacing_mm)
     
-    # 줄당 글자 수 (한글 기준)
-    chars_per_line = int(usable_width / char_width_mm)
+    # 줄당 글자 수 (한글 기준, 자간/장평 반영)
+    chars_per_line = int(usable_width / effective_char_width_mm)
     
     # 페이지당 글자 수 (여유분 80% 적용)
     chars_per_page = int(lines_per_page * chars_per_line * 0.8)
@@ -461,7 +472,8 @@ def render_font_settings(prefix: str, defaults: dict = None):
     
     # 페이지당 글자 수 계산 및 표시
     chars_per_page = calculate_chars_per_page(font_size_body, line_height, margin_top, 
-                                               margin_bottom, margin_left, margin_right)
+                                               margin_bottom, margin_left, margin_right,
+                                               char_width, letter_spacing)
     with target_cols[1]:
         st.info(f"📊 현재 설정: 페이지당 약 **{chars_per_page:,}자** | 총 **{target_pages * chars_per_page:,}자** 예상")
     
@@ -735,6 +747,11 @@ def create_pdf_document(customer_name: str, chapters_content: list, templates: d
         subtitle_size = font_settings.get('font_size_subtitle', 16)
         body_size = font_settings.get('font_size_body', 12)
         line_height_pct = font_settings.get('line_height', 180)
+        letter_spacing_pct = font_settings.get('letter_spacing', 0)  # 자간 (%)
+        char_width_pct = font_settings.get('char_width', 100)  # 장평 (%)
+        
+        # 자간 계산 (pt 단위): 폰트 크기 * 자간비율 / 100
+        char_space = body_size * (letter_spacing_pct / 100)
         
         # 여백 설정
         margin_top = font_settings.get('margin_top', 25) * mm
@@ -743,6 +760,9 @@ def create_pdf_document(customer_name: str, chapters_content: list, templates: d
         margin_right = font_settings.get('margin_right', 25) * mm
         
         c = canvas.Canvas(buffer, pagesize=A4)
+        
+        # 자간 설정 적용
+        c.setCharSpace(char_space)
         
         # 내지 배경 이미지 경로
         bg_path = templates.get('background')
@@ -1105,6 +1125,11 @@ def create_pdf_document(customer_name: str, chapters_content: list, templates: d
         subtitle_size = font_settings.get('font_size_subtitle', 16)
         body_size = font_settings.get('font_size_body', 12)
         line_height_pct = font_settings.get('line_height', 180)
+        letter_spacing_pct = font_settings.get('letter_spacing', 0)  # 자간 (%)
+        char_width_pct = font_settings.get('char_width', 100)  # 장평 (%)
+        
+        # 자간 계산 (pt 단위)
+        char_space = body_size * (letter_spacing_pct / 100)
         
         # 여백 설정
         margin_top = font_settings.get('margin_top', 25) * mm
@@ -1113,6 +1138,9 @@ def create_pdf_document(customer_name: str, chapters_content: list, templates: d
         margin_right = font_settings.get('margin_right', 25) * mm
         
         c = canvas.Canvas(buffer, pagesize=A4)
+        
+        # 자간 설정 적용
+        c.setCharSpace(char_space)
         
         # 내지 배경 이미지 경로
         bg_path = templates.get('background')
@@ -1262,7 +1290,9 @@ def generate_pdf_for_customer(customer_data: dict, service: dict, api_key: str,
         font_settings['margin_top'],
         font_settings['margin_bottom'],
         font_settings['margin_left'],
-        font_settings['margin_right']
+        font_settings['margin_right'],
+        font_settings.get('char_width', 100),
+        font_settings.get('letter_spacing', 0)
     )
     
     total_chapters = len(chapters)
@@ -1333,7 +1363,9 @@ def generate_pdf_with_progress(customer_data: dict, service: dict, api_key: str,
         font_settings['margin_top'],
         font_settings['margin_bottom'],
         font_settings['margin_left'],
-        font_settings['margin_right']
+        font_settings['margin_right'],
+        font_settings.get('char_width', 100),
+        font_settings.get('letter_spacing', 0)
     )
     
     total_chapters = len(chapters)
@@ -1511,10 +1543,16 @@ def show_product_registration():
         d_cols = st.columns(3)
         with d_cols[0]:
             cover = st.file_uploader("📕 표지", type=["jpg","jpeg","png"], key="new_cover")
+            if cover:
+                st.image(cover, width=80, caption="표지 미리보기")
         with d_cols[1]:
             bg = st.file_uploader("📄 내지", type=["jpg","jpeg","png"], key="new_bg")
+            if bg:
+                st.image(bg, width=80, caption="내지 미리보기")
         with d_cols[2]:
             info = st.file_uploader("📋 안내지", type=["jpg","jpeg","png"], key="new_info")
+            if info:
+                st.image(info, width=80, caption="안내지 미리보기")
         
         if st.button("💾 기성상품 등록", type="primary", use_container_width=True):
             if product_name:
@@ -1960,10 +1998,16 @@ def show_service_work():
                     d_cols = st.columns(3)
                     with d_cols[0]:
                         my_cover = st.file_uploader("📕 표지", type=["jpg","jpeg","png"], key="my_cover")
+                        if my_cover:
+                            st.image(my_cover, width=80, caption="표지 미리보기")
                     with d_cols[1]:
                         my_bg = st.file_uploader("📄 내지", type=["jpg","jpeg","png"], key="my_bg")
+                        if my_bg:
+                            st.image(my_bg, width=80, caption="내지 미리보기")
                     with d_cols[2]:
                         my_info = st.file_uploader("📋 안내지", type=["jpg","jpeg","png"], key="my_info")
+                        if my_info:
+                            st.image(my_info, width=80, caption="안내지 미리보기")
                 
                 st.markdown("---")
                 
