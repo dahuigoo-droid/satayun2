@@ -1,13 +1,6 @@
-streamlit>=1.33.0
-psycopg2-binary
-sqlalchemy
-bcrypt
-openai
-reportlab
+streamlit
 pandas
 openpyxl
-python-dotenv
-requests
-Pillow
 matplotlib
-numpy
+reportlab
+korean-lunar-calendar
