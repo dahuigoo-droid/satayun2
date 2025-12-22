@@ -6,10 +6,10 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import io, time, os
-from sqlalchemy import create_client, create_engine
+from sqlalchemy import create_engine # 에러 원인 수정: create_client 삭제
 from korean_lunar_calendar import KoreanLunarCalendar
 
-# 1. 한글 폰트 설정 (사장님이 올리신 파일명과 일치시켰습니다)
+# 1. 한글 폰트 설정 (NanumGothic-Regular.ttf 사용)
 @st.cache_resource
 def load_fonts():
     font_path = "NanumGothic-Regular.ttf"
@@ -24,13 +24,18 @@ def load_fonts():
 
 FONT = load_fonts()
 
-# 2. Supabase DB 연결 (Secrets에 등록하신 DATABASE_URL 사용)
+# 2. Supabase DB 연결 (Secrets의 DATABASE_URL 사용)
 def get_db_engine():
     try:
+        if "DATABASE_URL" not in st.secrets:
+            st.error("Secrets에 DATABASE_URL이 설정되지 않았습니다.")
+            return None
+        
         db_url = st.secrets["DATABASE_URL"]
-        # SQLAlchemy는 postgresql:// 형태를 지원하므로 필요시 수정
+        # Supabase URL 형식 보정 (postgres:// -> postgresql://)
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
+        
         return create_engine(db_url)
     except Exception as e:
         st.error(f"DB 연결 설정 오류: {e}")
@@ -38,13 +43,15 @@ def get_db_engine():
 
 # 3. 화면 설정
 st.set_page_config(page_title="사주 마스터 Pro", layout="wide")
-st.title("🔮 사주/타로 리포트 생성 시스템 (Supabase 연동)")
+st.title("🔮 사주/타로 리포트 생성 시스템")
 
-# --- 1구역: 기본 설정 ---
+# --- 1구역: 기본 설정 (좌우 배치) ---
 st.header("⚙️ 1. 리포트 기본 설정")
-c1, c2 = st.columns(2)
-with c1: toc = st.text_area("📋 PDF 목차", "1. 타고난 기질\n2. 올해의 연애운", height=100)
-with c2: guide = st.text_area("🤖 AI 지침", "친절하고 상세한 전문가 스타일", height=100)
+col_cfg1, col_cfg2 = st.columns(2)
+with col_cfg1:
+    toc = st.text_area("📋 PDF 목차", value="1. 타고난 기질\n2. 올해의 연애운\n3. 타로 카드의 조언", height=120)
+with col_cfg2:
+    guide = st.text_area("🤖 AI 지침", value="친절하고 상세하게 설명해주는 전문가 스타일로 작성하세요.", height=120)
 
 st.subheader("🖼️ 디자인 이미지 업로드")
 i1, i2, i3 = st.columns(3)
@@ -52,28 +59,35 @@ with i1: cv_img = i1.file_uploader("표지(1p)", type=["png", "jpg"])
 with i2: bd_img = i2.file_uploader("내지(2p)", type=["png", "jpg"])
 with i3: tl_img = i3.file_uploader("안내지(3p)", type=["png", "jpg"])
 
-# --- 2구역: 데이터 관리 (Supabase 연동) ---
+# --- 2구역: 데이터 관리 (DB 연동) ---
 st.divider()
 st.header("📂 2. 고객 데이터 관리")
 engine = get_db_engine()
 
-col_db1, col_db2 = st.columns([1, 4])
-if col_db1.button("📥 DB에서 고객 불러오기"):
-    if engine:
-        try:
-            st.session_state.db_data = pd.read_sql("SELECT * FROM clients", engine)
-            st.success("데이터를 성공적으로 불러왔습니다.")
-        except Exception as e:
-            st.error(f"데이터 불러오기 실패: {e}")
+db_btn_col, up_file_col = st.columns([1, 3])
 
-up_file = st.file_uploader("신규 엑셀 업로드 (DB 저장용)", type=["xlsx"])
+with db_btn_col:
+    if st.button("📥 DB에서 고객 불러오기", use_container_width=True):
+        if engine:
+            try:
+                # 'clients' 테이블이 없을 경우를 대비한 예외 처리
+                st.session_state.db_data = pd.read_sql("SELECT * FROM clients", engine)
+                st.success("데이터 로드 완료!")
+            except Exception as e:
+                st.error("DB에 'clients' 테이블이 없거나 데이터가 없습니다.")
+
+with up_file_col:
+    up_file = st.file_uploader("신규 고객 엑셀 업로드 (DB 저장용)", type=["xlsx"])
+
 if up_file:
     df_new = pd.read_excel(up_file)
+    st.dataframe(df_new.head(3), use_container_width=True) # 맛보기 노출
     if st.button("💾 이 명단을 DB에 저장하기"):
         if engine:
             try:
                 df_new.to_sql('clients', engine, if_exists='append', index=False)
-                st.success("DB에 고객 정보가 저장되었습니다!")
+                st.success("DB 저장 성공! '불러오기'를 눌러주세요.")
+                time.sleep(1)
                 st.rerun()
             except Exception as e:
                 st.error(f"저장 실패: {e}")
@@ -81,60 +95,31 @@ if up_file:
 # --- 3구역: 선택 및 PDF 생성 ---
 if 'db_data' in st.session_state:
     df = st.session_state.db_data
-    st.subheader("✅ 출력 대상 선택")
-    sel_all = st.checkbox("전체 선택")
+    st.subheader("✅ 출력 대상 고객 선택")
+    sel_all = st.checkbox("전체 고객 선택")
     
     selected_indices = []
     cols = st.columns(4)
     for idx, row in df.iterrows():
-        name = row.get('이름', '고객')
+        name = str(row.get('이름', f'고객{idx}'))
         with cols[idx % 4]:
-            if st.checkbox(name, value=sel_all, key=f"user_{idx}"):
+            if st.checkbox(f"{name}", value=sel_all, key=f"user_{idx}"):
                 selected_indices.append(idx)
 
-    if st.button(f"🚀 {len(selected_indices)}명 PDF 생성 시작"):
+    if st.button(f"🚀 선택한 {len(selected_indices)}명 PDF 생성 시작"):
         if not (cv_img and bd_img and tl_img):
-            st.error("이미지를 모두 업로드해주세요.")
+            st.error("❌ 디자인 이미지 3장을 모두 업로드해주세요.")
+        elif not selected_indices:
+            st.warning("⚠️ 대상을 선택해주세요.")
         else:
-            progress_bar = st.progress(0)
-            status_text = st.empty()
+            prog_bar = st.progress(0)
+            status_msg = st.empty()
             pdf_buf = io.BytesIO()
             p = canvas.Canvas(pdf_buf, pagesize=A4)
             w, h = A4
             
-            c_r, b_r, t_r = ImageReader(cv_img), ImageReader(bd_img), ImageReader(tl_img)
+            c_reader = ImageReader(cv_img)
+            b_reader = ImageReader(bd_img)
+            t_reader = ImageReader(tl_img)
 
-            for i, idx in enumerate(selected_indices):
-                row = df.iloc[idx]
-                name = str(row.get('이름'))
-                
-                status_text.text(f"⏳ {name}님 작업 중... ({i+1}/{len(selected_indices)})")
-                
-                # 1. 표지
-                p.drawImage(c_r, 0, 0, width=w, height=h)
-                p.setFont(FONT, 35)
-                p.drawCentredString(w/2, h/2, f"{name} 님 리포트")
-                p.showPage()
-                
-                # 2. 내지 (사주 계산)
-                p.drawImage(b_r, 0, 0, width=w, height=h)
-                calendar = KoreanLunarCalendar()
-                calendar.setSolarDate(int(row.get('년')), int(row.get('월')), int(row.get('일')))
-                gapja = calendar.getGapjaString()
-                
-                p.setFont(FONT, 20)
-                p.drawString(100, 700, f"성함: {name}")
-                p.drawString(100, 670, f"사주팔자: {gapja}")
-                p.showPage()
-                
-                # 3. 안내지
-                p.drawImage(t_r, 0, 0, width=w, height=h)
-                p.showPage()
-                
-                progress_bar.progress((i + 1) / len(selected_indices))
-                time.sleep(0.1)
-
-            p.save()
-            status_text.empty()
-            st.balloons()
-            st.download_button("📥 PDF 다운로드", pdf_buf.getvalue(), "saju_report.pdf")
+            for i, idx_in_df
