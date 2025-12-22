@@ -1,7 +1,7 @@
 streamlit
 pandas
 openpyxl
-matplotlib
 reportlab
 korean-lunar-calendar
-supabase
+sqlalchemy
+psycopg2-binary
