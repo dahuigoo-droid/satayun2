@@ -35,7 +35,7 @@ def get_db_engine():
 st.set_page_config(page_title="사주 마스터 Pro", layout="wide")
 st.title("🔮 사주/타로 리포트 생성기")
 
-# --- 1구역: 설정 (좌우) ---
+# --- 1구역: 설정 ---
 st.header("⚙️ 1. 리포트 기본 설정")
 c1, c2 = st.columns(2)
 with c1: toc = st.text_area("📋 PDF 목차", "1. 타고난 기질\n2. 올해의 연애운", height=100)
@@ -52,15 +52,13 @@ st.divider()
 st.header("📂 2. 고객 데이터 선택")
 engine = get_db_engine()
 
-# DB 불러오기 버튼을 크게 배치
 if st.button("📥 DB에서 고객 명단 불러오기", use_container_width=True):
     if engine:
         try:
             st.session_state.db_data = pd.read_sql("SELECT * FROM clients", engine)
-            st.success("데이터를 성공적으로 불러왔습니다!")
-        except: st.error("DB에 'clients' 테이블이 없거나 데이터가 없습니다.")
+            st.success("데이터 로드 완료!")
+        except: st.error("DB 연결은 되었으나 데이터를 찾을 수 없습니다.")
 
-# 데이터가 있을 때만 체크박스 노출
 selected_indices = []
 if 'db_data' in st.session_state:
     df = st.session_state.db_data
@@ -72,20 +70,16 @@ if 'db_data' in st.session_state:
             if st.checkbox(name, value=sel_all, key=f"u_{idx}"):
                 selected_indices.append(idx)
 
-# --- 3구역: PDF 생성 (버튼을 밖으로 빼서 무조건 보이게 함) ---
+# --- 3구역: PDF 생성 실행 (안전장치 강화 버전) ---
 st.divider()
 st.header("📄 3. PDF 생성 실행")
 
-# 버튼을 조건문 밖으로 빼서 무조건 보이게 설정
-generate_btn = st.button(f"🚀 선택한 {len(selected_indices)}명 PDF 생성 시작", type="primary", use_container_width=True)
-
-if generate_btn:
+if st.button(f"🚀 선택한 {len(selected_indices)}명 PDF 생성 시작", type="primary", use_container_width=True):
     if not (cv_img and bd_img and tl_img):
-        st.error("❌ 에러: 디자인 이미지 3장을 모두 업로드해야 PDF를 만들 수 있습니다!")
+        st.error("❌ 디자인 이미지 3장을 모두 업로드해주세요.")
     elif len(selected_indices) == 0:
-        st.warning("⚠️ 경고: 리포트를 만들 고객을 먼저 선택해주세요.")
+        st.warning("⚠️ 고객을 먼저 선택해주세요.")
     else:
-        # 생성 로직 시작
         prog_bar = st.progress(0)
         status_msg = st.empty()
         pdf_buf = io.BytesIO()
@@ -103,12 +97,22 @@ if generate_btn:
             p.drawImage(c_r, 0, 0, width=w, height=h)
             p.setFont(FONT, 35); p.drawCentredString(w/2, h/2 + 50, f"{name} 님"); p.showPage()
             
-            # 2. 내지
+            # 2. 내지 (사주 계산 에러 방지 로직)
             p.drawImage(b_r, 0, 0, width=w, height=h)
-            cal = KoreanLunarCalendar()
-            cal.setSolarDate(int(row.get('년', 1990)), int(row.get('월', 1)), int(row.get('일', 1)))
+            
+            # 사주 데이터 안전하게 추출
+            try:
+                cal = KoreanLunarCalendar()
+                y = int(row.get('년', 1990))
+                m = int(row.get('월', 1))
+                d = int(row.get('일', 1))
+                cal.setSolarDate(y, m, d) # 날짜 먼저 설정
+                gapja = cal.getGapjaString() # 그 다음 데이터 추출
+            except:
+                gapja = "날짜 데이터 확인 필요"
+
             p.setFont(FONT, 20); p.drawString(80, 720, f"성함: {name}")
-            p.drawString(80, 680, f"사주: {cal.getGapjaString()}"); p.showPage()
+            p.drawString(80, 680, f"사주: {gapja}"); p.showPage()
             
             # 3. 안내지
             p.drawImage(t_r, 0, 0, width=w, height=h); p.showPage()
@@ -116,5 +120,5 @@ if generate_btn:
 
         p.save()
         status_msg.empty(); st.balloons()
-        st.success("✅ 생성이 완료되었습니다! 아래 다운로드 버튼을 눌러주세요.")
+        st.success("✅ 생성이 완료되었습니다!")
         st.download_button("📥 완성된 PDF 다운로드", pdf_buf.getvalue(), "saju_report.pdf", "application/pdf")
