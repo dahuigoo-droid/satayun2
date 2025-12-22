@@ -30,11 +30,9 @@ def get_db_engine():
         if "DATABASE_URL" not in st.secrets:
             st.error("Secrets에 DATABASE_URL이 설정되지 않았습니다.")
             return None
-        
         db_url = st.secrets["DATABASE_URL"]
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
-        
         return create_engine(db_url)
     except Exception as e:
         st.error(f"DB 연결 설정 오류: {e}")
@@ -62,7 +60,6 @@ with i3: tl_img = i3.file_uploader("안내지(3p)", type=["png", "jpg"])
 st.divider()
 st.header("📂 2. 고객 데이터 관리")
 engine = get_db_engine()
-
 db_btn_col, up_file_col = st.columns([1, 3])
 
 with db_btn_col:
@@ -71,38 +68,71 @@ with db_btn_col:
             try:
                 st.session_state.db_data = pd.read_sql("SELECT * FROM clients", engine)
                 st.success("데이터 로드 완료!")
-            except Exception as e:
-                st.error("DB에 'clients' 테이블이 없거나 데이터가 없습니다.")
+            except:
+                st.error("DB에 데이터가 없습니다.")
 
 with up_file_col:
-    up_file = st.file_uploader("신규 고객 엑셀 업로드 (DB 저장용)", type=["xlsx"])
+    up_file = st.file_uploader("신규 고객 엑셀 업로드", type=["xlsx"])
 
 if up_file:
     df_new = pd.read_excel(up_file)
-    st.dataframe(df_new.head(3), use_container_width=True)
-    if st.button("💾 이 명단을 DB에 저장하기"):
+    if st.button("💾 DB에 저장"):
         if engine:
-            try:
-                df_new.to_sql('clients', engine, if_exists='append', index=False)
-                st.success("DB 저장 성공! '불러오기'를 눌러주세요.")
-                time.sleep(1)
-                st.rerun()
-            except Exception as e:
-                st.error(f"저장 실패: {e}")
+            df_new.to_sql('clients', engine, if_exists='append', index=False)
+            st.success("저장 성공!")
+            st.rerun()
 
 # --- 3구역: 선택 및 PDF 생성 ---
 if 'db_data' in st.session_state:
     df = st.session_state.db_data
-    st.subheader("✅ 출력 대상 고객 선택")
-    sel_all = st.checkbox("전체 고객 선택")
-    
+    st.subheader("✅ 대상 선택")
+    sel_all = st.checkbox("전체 선택")
     selected_indices = []
     cols = st.columns(4)
     for idx, row in df.iterrows():
-        name = str(row.get('이름', f'고객{idx}'))
+        name = str(row.get('이름', '고객'))
         with cols[idx % 4]:
-            if st.checkbox(f"{name}", value=sel_all, key=f"user_{idx}"):
+            if st.checkbox(name, value=sel_all, key=f"u_{idx}"):
                 selected_indices.append(idx)
 
-    # 에러 났던 루프 구문 수정 완료
-    if st.button(f"🚀 선택한 {len(selected_
+    # [수정됨] 괄호가 정확히 닫힌 생성 버튼
+    btn_label = f"🚀 선택한 {len(selected_indices)}명 PDF 생성 시작"
+    if st.button(btn_label):
+        if not (cv_img and bd_img and tl_img):
+            st.error("❌ 이미지를 모두 올려주세요.")
+        elif not selected_indices:
+            st.warning("⚠️ 선택된 고객이 없습니다.")
+        else:
+            prog_bar = st.progress(0)
+            status_msg = st.empty()
+            pdf_buf = io.BytesIO()
+            p = canvas.Canvas(pdf_buf, pagesize=A4)
+            w, h = A4
+            
+            c_reader, b_reader, t_reader = ImageReader(cv_img), ImageReader(bd_img), ImageReader(tl_img)
+
+            for i, idx_in_df in enumerate(selected_indices):
+                row = df.iloc[idx_in_df]
+                name = str(row.get('이름', '고객'))
+                status_msg.text(f"📝 {name}님 작성 중... ({i+1}/{len(selected_indices)})")
+                
+                # 1. 표지
+                p.drawImage(c_reader, 0, 0, width=w, height=h)
+                p.setFont(FONT, 35); p.drawCentredString(w/2, h/2, f"{name} 님 리포트"); p.showPage()
+                
+                # 2. 내지
+                p.drawImage(b_reader, 0, 0, width=w, height=h)
+                cal = KoreanLunarCalendar()
+                cal.setSolarDate(int(row.get('년', 1990)), int(row.get('월', 1)), int(row.get('일', 1)))
+                p.setFont(FONT, 20); p.drawString(100, 700, f"성함: {name}")
+                p.drawString(100, 670, f"사주: {cal.getGapjaString()}"); p.showPage()
+                
+                # 3. 안내지
+                p.drawImage(t_reader, 0, 0, width=w, height=h); p.showPage()
+                
+                prog_bar.progress((i + 1) / len(selected_indices))
+                time.sleep(0.1)
+
+            p.save()
+            status_msg.empty(); st.balloons()
+            st.download_button("📥 PDF 다운로드", pdf_buf.getvalue(), "saju_report.pdf")
