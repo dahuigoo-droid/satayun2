@@ -1,7 +1,0 @@
-streamlit
-pandas
-openpyxl
-reportlab
-korean-lunar-calendar
-sqlalchemy
-psycopg2-binary
