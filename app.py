@@ -5,65 +5,80 @@ from reportlab.pdfgen import canvas
 import io
 from korean_lunar_calendar import KoreanLunarCalendar
 
-# --- 1. 사주 계산 엔진 (기능 구역) ---
+# 1. 사주 계산 함수 (엑셀 데이터를 한자로 변환)
 def get_saju_data(year, month, day):
     calendar = KoreanLunarCalendar()
-    # 양력 날짜 설정
-    calendar.setSolarDate(int(year), int(month), int(day))
-    # 간지(사주 글자) 가져오기
-    gapja = calendar.getGapjaString() 
-    
-    # 오행 점수 계산 (단순 예시)
-    scores = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
-    if "甲" in gapja or "乙" in gapja or "寅" in gapja or "卯" in gapja: scores["목"] += 20
-    if "丙" in gapja or "丁" in gapja or "巳" in gapja or "午" in gapja: scores["화"] += 20
-    if "戊" in gapja or "己" in gapja or "辰" in gapja or "戌" in gapja or "丑" in gapja or "未" in gapja: scores["토"] += 20
-    if "庚" in gapja or "辛" in gapja or "申" in gapja or "酉" in gapja: scores["금"] += 20
-    if "壬" in gapja or "癸" in gapja or "亥" in gapja or "子" in gapja: scores["수"] += 20
-    
-    return gapja, scores
+    try:
+        # 양력 날짜 설정
+        calendar.setSolarDate(int(year), int(month), int(day))
+        # 사주 간지(한자) 가져오기
+        gapja = calendar.getGapjaString() 
+        
+        # 오행 점수 계산기
+        scores = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
+        # 한자 기반으로 오행 판별
+        if any(x in gapja for x in ["甲", "乙", "寅", "卯"]): scores["목"] += 20
+        if any(x in gapja for x in ["丙", "丁", "巳", "午"]): scores["화"] += 20
+        if any(x in gapja for x in ["戊", "己", "辰", "戌", "丑", "未"]): scores["토"] += 20
+        if any(x in gapja for x in ["庚", "辛", "申", "酉"]): scores["금"] += 20
+        if any(x in gapja for x in ["壬", "癸", "亥", "子"]): scores["수"] += 20
+        
+        return gapja, scores
+    except:
+        return "날짜 오류", {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
 
-# --- 2. 화면 구성 (보여지는 구역) ---
+# 2. 화면 설정
 st.set_page_config(page_title="사주/타로 PDF 생성기", layout="wide")
 st.title("🔮 사주/타로 PDF 자동 생성 시스템")
 
+# 사이드바 설정창
 with st.sidebar:
     st.header("⚙️ 설정")
-    toc_list = st.text_area("📋 PDF 목차", value="1. 타고난 기질\n2. 올해의 운세\n3. 타로의 조언")
-    ai_guide = st.text_area("🤖 AI 지침", value="다정한 역술가 스타일로 써주세요.")
+    toc_list = st.text_area("📋 PDF 목차", value="1. 타고난 기질\n2. 올해의 연애운\n3. 타로 카드의 조언")
+    ai_guide = st.text_area("🤖 AI 상담사 지침", value="친절하고 상세하게 설명해주는 전문가 스타일로 작성하세요.")
 
+# 3. 엑셀 파일 업로드
 st.header("📂 1. 고객 데이터 업로드")
-uploaded_file = st.file_uploader("고객 엑셀(.xlsx)을 올려주세요.", type=["xlsx"])
+uploaded_file = st.file_uploader("고객 정보 엑셀 파일(.xlsx)을 업로드하세요.", type=["xlsx"])
 
 if uploaded_file:
+    # 엑셀 읽기
     df = pd.read_excel(uploaded_file)
-    st.success("데이터를 불러왔습니다!")
+    st.success(f"총 {len(df)}명의 데이터를 확인했습니다.")
     
-    st.header("📊 2. 사주 분석 결과")
+    st.header("📊 2. 고객별 사주 분석 결과")
     
-    # 엑셀의 각 줄(고객)마다 반복해서 계산
+    # 고객 한 명씩 계산 시작
     for index, row in df.iterrows():
-        try:
-            # 엑셀 칸 이름이 '이름', '년', '월', '일'이어야 합니다.
-            name = row['이름']
-            y, m, d = row['년'], row['월'], row['일']
+        # 이름, 년, 월, 일 컬럼이 있어야 함
+        name = row.get('이름', f'고객{index+1}')
+        y = row.get('년', 1990)
+        m = row.get('월', 1)
+        d = row.get('일', 1)
+        
+        gapja_text, element_scores = get_saju_data(y, m, d)
+        
+        # 화면에 결과 보여주기 (접었다 폈다 할 수 있는 칸)
+        with st.expander(f"👤 {name} 님의 사주 분석 결과"):
+            st.write(f"**사주 팔자:** {gapja_text}")
             
-            gapja_text, element_scores = get_saju_data(y, m, d)
-            
-            with st.expander(f"👤 {name} 님의 분석 결과 보기"):
-                st.write(f"**사주 팔자:** {gapja_text}")
-                
-                # 그래프 그리기
-                fig, ax = plt.subplots(figsize=(5, 3))
-                ax.bar(element_scores.keys(), element_scores.values(), color=['green', 'red', 'brown', 'gray', 'blue'])
-                st.pyplot(fig)
-        except Exception as e:
-            st.error(f"{index+1}번째 줄 데이터에 문제가 있어요. (칸 이름을 확인하세요)")
+            # 오행 그래프 그리기
+            fig, ax = plt.subplots(figsize=(6, 3))
+            colors = ['#2ECC71', '#E74C3C', '#F1C40F', '#BDC3C7', '#3498DB'] # 목화토금수 색상
+            ax.bar(element_scores.keys(), element_scores.values(), color=colors)
+            ax.set_title(f"{name} 님의 오행 분포")
+            st.pyplot(fig)
 
-    # --- 3. PDF 생성 버튼 ---
-    if st.button("📄 모든 고객 PDF 생성 및 다운로드"):
+    # 4. PDF 생성 버튼
+    st.divider()
+    if st.button("📄 모든 결과 PDF로 한꺼번에 만들기"):
         buffer = io.BytesIO()
         p = canvas.Canvas(buffer)
-        p.drawString(100, 800, "Saju Report")
+        p.setFont("Helvetica", 20)
+        p.drawString(100, 800, "Saju & Tarot Report")
+        p.setFont("Helvetica", 12)
+        p.drawString(100, 750, f"Guide: {ai_guide}")
+        p.showPage()
         p.save()
-        st.download_button("PDF 다운로드", data=buffer.getvalue(), file_name="report.pdf")
+        
+        st.download_button("PDF 다운로드 받기", data=buffer.getvalue(), file_name="saju_report.pdf")
