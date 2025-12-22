@@ -1,141 +1,78 @@
-# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
-import os
-import time
-from datetime import datetime
+import matplotlib.pyplot as plt
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import io
 
-# 기존 프로젝트 파일들 연결
-from database import init_db
-from auth import login_user
-from services import get_admin_services
-from pdf_generator import PDFGenerator  # PDF 기계 가져오기
+# --- 1. 화면 구성 (UI) ---
+st.set_page_config(page_title="사주/타로 PDF 생성기", layout="wide")
+st.title("🔮 사주/타로 PDF 자동 생성 시스템")
 
-# 1. 화면 설정
-st.set_page_config(page_title="PDF 자동 생성 플랫폼", page_icon="🔮", layout="wide")
+with st.sidebar:
+    st.header("⚙️ 설정")
+    # 여기에 Supabase 주소와 키를 넣게 됩니다.
+    supabase_url = st.text_input("Supabase URL")
+    supabase_key = st.text_input("Supabase API Key", type="password")
+    
+    st.divider()
+    toc_list = st.text_area("📋 PDF 목차 (엔터로 구분)", 
+                           value="1. 타고난 기질\n2. 올해의 운세\n3. 타로의 조언")
+    ai_guide = st.text_area("🤖 AI 지침(프롬프트)", 
+                           value="당신은 다정한 상담가입니다. 전문 용어를 쉽게 풀어서 설명하세요.")
 
-def main():
-    init_db() # DB 시동
+# --- 2. 엑셀 업로드 및 데이터베이스 저장 로직 ---
+st.header("📂 1. 고객 데이터 업로드")
+uploaded_file = st.file_uploader("고객 정보 엑셀 파일(.xlsx)을 올려주세요.", type=["xlsx"])
 
-    # [cite_start]로그인 상태 기억 [cite: 2]
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
+if uploaded_file:
+    df = pd.read_excel(uploaded_file)
+    st.success("엑셀 파일을 성공적으로 읽었습니다!")
+    st.dataframe(df.head()) # 데이터 확인용
 
-    # --- [기능] 전체 작업 초기화 (사이드바) ---
-    with st.sidebar:
-        if st.button("🔄 전체 작업 초기화", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                if key != 'logged_in':
-                    del st.session_state[key]
-            st.rerun()
-
-    # [cite_start]2. 로그인 화면 (로그아웃 상태일 때) [cite: 2]
-    if not st.session_state.logged_in:
-        st.title("🔮 로그인")
-        with st.form("login"):
-            u_email = st.text_input("이메일")
-            u_pw = st.text_input("비밀번호", type="password")
-            if st.form_submit_button("로그인"):
-                res = login_user(u_email, u_pw)
-                if res["success"]:
-                    st.session_state.logged_in = True
-                    st.session_state.user = res["user"]
-                    st.rerun()
-                else:
-                    st.error(res["error"])
-        return
-
-    # 3. 메인 메뉴 (로그인 성공 시)
-    user = st.session_state.user
-    with st.sidebar:
-        st.write(f"### 👤 {user['name']}님")
-        menu = st.radio("메뉴", ["📢 공지사항", "🔧 서비스 작업", "📚 자료실"])
-        if st.button("🚪 로그아웃"):
-            st.session_state.logged_in = False
-            st.rerun()
-
-    # --- [핵심] 서비스 작업 및 PDF 생성 로직 ---
-    if menu == "🔧 서비스 작업":
-        st.title("🔧 서비스 작업")
+    # --- 3. 그래프 생성 (Matplotlib) ---
+    st.header("📊 2. 사주 오행 분석 (샘플 그래프)")
+    
+    def create_element_chart():
+        elements = ['목', '화', '토', '금', '수']
+        values = [20, 15, 30, 10, 25] # 임시 데이터 (나중에 사주 로직으로 계산)
         
-        # 상품 선택
-        services = get_admin_services()
-        if services:
-            svc_names = [s['name'] for s in services]
-            sel_svc = st.selectbox("상품을 선택하세요", svc_names)
+        fig, ax = plt.subplots()
+        ax.bar(elements, values, color=['green', 'red', 'brown', 'gray', 'blue'])
+        plt.rcParams['font.family'] = 'Malgun Gothic' # 한글 깨짐 방지
+        return fig
+
+    fig = create_element_chart()
+    st.pyplot(fig)
+
+    # --- 4. PDF 생성 (ReportLab) ---
+    st.header("📄 3. PDF 리포트 생성")
+    
+    if st.button("모든 고객 PDF 생성 및 다운로드"):
+        # PDF를 메모리에 생성
+        buffer = io.BytesIO()
+        p = canvas.Canvas(buffer)
+        
+        # 간단한 내용 채우기
+        p.setFont("Helvetica", 20)
+        p.drawString(100, 800, "Saju & Tarot Report")
+        
+        p.setFont("Helvetica", 12)
+        p.drawString(100, 750, f"Guide: {ai_guide}")
+        
+        # 목차 그리기
+        y_pos = 700
+        for line in toc_list.split('\n'):
+            p.drawString(100, y_pos, line)
+            y_pos -= 20
             
-            st.divider()
-            uploaded_file = st.file_uploader("엑셀 업로드", type=['xlsx'])
-
-            if uploaded_file:
-                if 'df' not in st.session_state:
-                    st.session_state.df = pd.read_excel(uploaded_file)
-                
-                df = st.session_state.df
-                
-                # 전체 선택 기능
-                all_select = st.checkbox("✅ 전체 고객 선택 / 해제")
-                selected_indices = []
-                
-                for idx, row in df.iterrows():
-                    c1, c2, c3 = st.columns([1, 4, 5])
-                    with c1:
-                        is_sel = st.checkbox("", value=all_select, key=f"c_{idx}")
-                        if is_sel: selected_indices.append(idx)
-                    with c2: st.write(f"**{row.get('이름', '고객')}**")
-                    with c3: st.caption(f"{row.get('생년월일', '')}")
-
-                if st.button("🚀 PDF 생성 시작", type="primary", use_container_width=True):
-                    if not selected_indices:
-                        st.warning("고객을 선택해주세요.")
-                    else:
-                        # 진행률 바 생성
-                        prog_bar = st.progress(0)
-                        status_msg = st.empty()
-                        
-                        # 진짜 PDF 생성 기계 돌리기
-                        pdf_worker = PDFGenerator() 
-                        
-                        for i, s_idx in enumerate(selected_indices):
-                            cust_name = df.loc[s_idx, '이름']
-                            
-                            # 진행률 계산
-                            percent = (i + 1) / len(selected_indices)
-                            prog_bar.progress(percent)
-                            status_msg.write(f"⏳ ({i+1}/{len(selected_indices)}) {cust_name}님 보고서 작성 중...")
-                            
-                            # 가짜 내용(테스트용) - 나중에 GPT 연결 가능
-                            test_content = [{"title": "운세 분석", "content": f"{cust_name}님의 상세 운세 내용입니다."}]
-                            
-                            # PDF 파일 만들기 실행
-                            pdf_data = pdf_worker.create_pdf(
-                                chapters_content=test_content,
-                                customer_name=cust_name,
-                                service_type=sel_svc
-                            )
-                            
-                            # 생성된 파일을 세션에 임시 저장 (다운로드용)
-                            st.session_state[f"pdf_{s_idx}"] = pdf_data
-                        
-                        status_msg.success("✅ 모든 PDF 생성이 완료되었습니다!")
-                        st.balloons()
-
-                        # 다운로드 버튼들 보여주기
-                        for s_idx in selected_indices:
-                            if f"pdf_{s_idx}" in st.session_state:
-                                st.download_button(
-                                    label=f"📥 {df.loc[s_idx, '이름']}님 PDF 다운로드",
-                                    data=st.session_state[f"pdf_{s_idx}"],
-                                    file_name=f"{df.loc[s_idx, '이름']}_보고서.pdf",
-                                    mime="application/pdf",
-                                    key=f"dl_{s_idx}"
-                                )
-
-    # 나머지 메뉴 (내용 보존)
-    elif menu == "📢 공지사항":
-        st.info("공지사항 메뉴입니다.")
-    elif menu == "📚 자료실":
-        st.info("자료실 메뉴입니다.")
-
-if __name__ == "__main__":
-    main()
+        p.showPage()
+        p.save()
+        
+        st.download_button(
+            label="PDF 다운로드",
+            data=buffer.getvalue(),
+            file_name="report.pdf",
+            mime="application/pdf"
+        )
