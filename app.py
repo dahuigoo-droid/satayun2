@@ -6,7 +6,7 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import io, time, os
-from sqlalchemy import create_engine # 에러 원인 수정: create_client 삭제
+from sqlalchemy import create_engine
 from korean_lunar_calendar import KoreanLunarCalendar
 
 # 1. 한글 폰트 설정 (NanumGothic-Regular.ttf 사용)
@@ -32,7 +32,6 @@ def get_db_engine():
             return None
         
         db_url = st.secrets["DATABASE_URL"]
-        # Supabase URL 형식 보정 (postgres:// -> postgresql://)
         if db_url.startswith("postgres://"):
             db_url = db_url.replace("postgres://", "postgresql://", 1)
         
@@ -70,7 +69,6 @@ with db_btn_col:
     if st.button("📥 DB에서 고객 불러오기", use_container_width=True):
         if engine:
             try:
-                # 'clients' 테이블이 없을 경우를 대비한 예외 처리
                 st.session_state.db_data = pd.read_sql("SELECT * FROM clients", engine)
                 st.success("데이터 로드 완료!")
             except Exception as e:
@@ -81,7 +79,7 @@ with up_file_col:
 
 if up_file:
     df_new = pd.read_excel(up_file)
-    st.dataframe(df_new.head(3), use_container_width=True) # 맛보기 노출
+    st.dataframe(df_new.head(3), use_container_width=True)
     if st.button("💾 이 명단을 DB에 저장하기"):
         if engine:
             try:
@@ -106,20 +104,5 @@ if 'db_data' in st.session_state:
             if st.checkbox(f"{name}", value=sel_all, key=f"user_{idx}"):
                 selected_indices.append(idx)
 
-    if st.button(f"🚀 선택한 {len(selected_indices)}명 PDF 생성 시작"):
-        if not (cv_img and bd_img and tl_img):
-            st.error("❌ 디자인 이미지 3장을 모두 업로드해주세요.")
-        elif not selected_indices:
-            st.warning("⚠️ 대상을 선택해주세요.")
-        else:
-            prog_bar = st.progress(0)
-            status_msg = st.empty()
-            pdf_buf = io.BytesIO()
-            p = canvas.Canvas(pdf_buf, pagesize=A4)
-            w, h = A4
-            
-            c_reader = ImageReader(cv_img)
-            b_reader = ImageReader(bd_img)
-            t_reader = ImageReader(tl_img)
-
-            for i, idx_in_df
+    # 에러 났던 루프 구문 수정 완료
+    if st.button(f"🚀 선택한 {len(selected_
