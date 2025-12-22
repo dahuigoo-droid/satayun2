@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.utils import ImageReader # 이미지 처리를 위해 필수!
 import io
 import time
 from korean_lunar_calendar import KoreanLunarCalendar
@@ -13,8 +14,7 @@ def get_saju_data(year, month, day):
     calendar = KoreanLunarCalendar()
     try:
         calendar.setSolarDate(int(year), int(month), int(day))
-        gapja = calendar.getGapjaString() 
-        return gapja
+        return calendar.getGapjaString()
     except:
         return "날짜 오류"
 
@@ -49,15 +49,19 @@ if uploaded_file:
     
     if st.button("🚀 PDF 생성 시작하기"):
         if not (cover_img and body_img and tail_img):
-            st.error("❌ 표지, 내지, 안내지 이미지를 모두 업로드해주세요!")
+            st.error("❌ 모든 이미지(표지, 내지, 안내지)를 업로드해주세요!")
         else:
             progress_text = st.empty()
             my_bar = st.progress(0)
             
-            # PDF 생성을 위한 메모리 준비
             pdf_buffer = io.BytesIO()
             p = canvas.Canvas(pdf_buffer, pagesize=A4)
             width, height = A4
+
+            # 에러 방지: 이미지를 ReportLab이 읽을 수 있는 형식으로 변환
+            cover_reader = ImageReader(cover_img)
+            body_reader = ImageReader(body_img)
+            tail_reader = ImageReader(tail_img)
 
             for i, row in df.iterrows():
                 name = row.get('이름', f'고객{i+1}')
@@ -65,36 +69,35 @@ if uploaded_file:
                 gapja_result = get_saju_data(y, m, d)
 
                 # --- [1페이지: 표지] ---
-                progress_text.text(f"📄 {name}님의 표지를 생성 중...")
-                p.drawImage(Image.open(cover_img), 0, 0, width=width, height=height)
+                progress_text.text(f"📄 {name}님의 표지 생성 중...")
+                p.drawImage(cover_reader, 0, 0, width=width, height=height)
                 p.setFont("Helvetica-Bold", 30)
-                p.drawCentredString(width/2, height/2, f"{name} Client Report") # 한글은 폰트 설정 후 가능
+                p.drawCentredString(width/2, height/2 + 100, f"{name}'s Report")
                 p.showPage()
 
-                # --- [2페이지: 내지 및 데이터] ---
-                progress_text.text(f"📝 {name}님의 사주 분석 내용을 적고 있습니다...")
-                p.drawImage(Image.open(body_img), 0, 0, width=width, height=height)
+                # --- [2페이지: 내지] ---
+                progress_text.text(f"📝 {name}님의 분석 내용 작성 중...")
+                p.drawImage(body_reader, 0, 0, width=width, height=height)
                 p.setFont("Helvetica", 15)
-                p.drawString(100, 700, f"Saju Result: {gapja_result}") # 데이터 반영
-                p.drawString(100, 650, f"AI Guide: {ai_guide[:30]}...") # 지침 반영
+                # 데이터 반영 (한글 폰트 설정 전까지는 영어로 출력 권장)
+                p.drawString(100, 700, f"Name: {name}")
+                p.drawString(100, 670, f"Saju: {gapja_result}")
                 p.showPage()
 
                 # --- [3페이지: 안내지] ---
-                progress_text.text(f"🏁 {name}님의 마지막 페이지를 합성 중...")
-                p.drawImage(Image.open(tail_img), 0, 0, width=width, height=height)
+                progress_text.text(f"🏁 마지막 페이지 합성 중...")
+                p.drawImage(tail_reader, 0, 0, width=width, height=height)
                 p.showPage()
 
-                # 진행률 업데이트
                 my_bar.progress(int(((i + 1) / len(df)) * 100))
 
             p.save()
             progress_text.empty()
             st.balloons()
-            st.success("✅ 모든 리포트가 성공적으로 결합되었습니다!")
             
             st.download_button(
                 label="📥 완성된 PDF 다운로드",
                 data=pdf_buffer.getvalue(),
-                file_name="saju_final_report.pdf",
+                file_name="saju_report.pdf",
                 mime="application/pdf"
             )
