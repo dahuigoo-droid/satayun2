@@ -2,126 +2,68 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 import io
+from korean_lunar_calendar import KoreanLunarCalendar
 
-# --- 1. 화면 구성 (UI) ---
+# --- 1. 사주 계산 엔진 (기능 구역) ---
+def get_saju_data(year, month, day):
+    calendar = KoreanLunarCalendar()
+    # 양력 날짜 설정
+    calendar.setSolarDate(int(year), int(month), int(day))
+    # 간지(사주 글자) 가져오기
+    gapja = calendar.getGapjaString() 
+    
+    # 오행 점수 계산 (단순 예시)
+    scores = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
+    if "甲" in gapja or "乙" in gapja or "寅" in gapja or "卯" in gapja: scores["목"] += 20
+    if "丙" in gapja or "丁" in gapja or "巳" in gapja or "午" in gapja: scores["화"] += 20
+    if "戊" in gapja or "己" in gapja or "辰" in gapja or "戌" in gapja or "丑" in gapja or "未" in gapja: scores["토"] += 20
+    if "庚" in gapja or "辛" in gapja or "申" in gapja or "酉" in gapja: scores["금"] += 20
+    if "壬" in gapja or "癸" in gapja or "亥" in gapja or "子" in gapja: scores["수"] += 20
+    
+    return gapja, scores
+
+# --- 2. 화면 구성 (보여지는 구역) ---
 st.set_page_config(page_title="사주/타로 PDF 생성기", layout="wide")
 st.title("🔮 사주/타로 PDF 자동 생성 시스템")
 
 with st.sidebar:
     st.header("⚙️ 설정")
-    # 여기에 Supabase 주소와 키를 넣게 됩니다.
-    supabase_url = st.text_input("Supabase URL")
-    supabase_key = st.text_input("Supabase API Key", type="password")
-    
-    st.divider()
-    toc_list = st.text_area("📋 PDF 목차 (엔터로 구분)", 
-                           value="1. 타고난 기질\n2. 올해의 운세\n3. 타로의 조언")
-    ai_guide = st.text_area("🤖 AI 지침(프롬프트)", 
-                           value="당신은 다정한 상담가입니다. 전문 용어를 쉽게 풀어서 설명하세요.")
+    toc_list = st.text_area("📋 PDF 목차", value="1. 타고난 기질\n2. 올해의 운세\n3. 타로의 조언")
+    ai_guide = st.text_area("🤖 AI 지침", value="다정한 역술가 스타일로 써주세요.")
 
-# --- 2. 엑셀 업로드 및 데이터베이스 저장 로직 ---
 st.header("📂 1. 고객 데이터 업로드")
-uploaded_file = st.file_uploader("고객 정보 엑셀 파일(.xlsx)을 올려주세요.", type=["xlsx"])
+uploaded_file = st.file_uploader("고객 엑셀(.xlsx)을 올려주세요.", type=["xlsx"])
 
 if uploaded_file:
     df = pd.read_excel(uploaded_file)
-    st.success("엑셀 파일을 성공적으로 읽었습니다!")
-    st.dataframe(df.head()) # 데이터 확인용
-
-    # --- 3. 그래프 생성 (Matplotlib) ---
-    st.header("📊 2. 사주 오행 분석 (샘플 그래프)")
+    st.success("데이터를 불러왔습니다!")
     
-    def create_element_chart():
-        elements = ['목', '화', '토', '금', '수']
-        values = [20, 15, 30, 10, 25] # 임시 데이터 (나중에 사주 로직으로 계산)
-        
-        fig, ax = plt.subplots()
-        ax.bar(elements, values, color=['green', 'red', 'brown', 'gray', 'blue'])
-        plt.rcParams['font.family'] = 'Malgun Gothic' # 한글 깨짐 방지
-        return fig
-
-    fig = create_element_chart()
-    st.pyplot(fig)
-
-    # --- 4. PDF 생성 (ReportLab) ---
-    st.header("📄 3. PDF 리포트 생성")
+    st.header("📊 2. 사주 분석 결과")
     
-    if st.button("모든 고객 PDF 생성 및 다운로드"):
-        # PDF를 메모리에 생성
+    # 엑셀의 각 줄(고객)마다 반복해서 계산
+    for index, row in df.iterrows():
+        try:
+            # 엑셀 칸 이름이 '이름', '년', '월', '일'이어야 합니다.
+            name = row['이름']
+            y, m, d = row['년'], row['월'], row['일']
+            
+            gapja_text, element_scores = get_saju_data(y, m, d)
+            
+            with st.expander(f"👤 {name} 님의 분석 결과 보기"):
+                st.write(f"**사주 팔자:** {gapja_text}")
+                
+                # 그래프 그리기
+                fig, ax = plt.subplots(figsize=(5, 3))
+                ax.bar(element_scores.keys(), element_scores.values(), color=['green', 'red', 'brown', 'gray', 'blue'])
+                st.pyplot(fig)
+        except Exception as e:
+            st.error(f"{index+1}번째 줄 데이터에 문제가 있어요. (칸 이름을 확인하세요)")
+
+    # --- 3. PDF 생성 버튼 ---
+    if st.button("📄 모든 고객 PDF 생성 및 다운로드"):
         buffer = io.BytesIO()
         p = canvas.Canvas(buffer)
-        
-        # 간단한 내용 채우기
-        p.setFont("Helvetica", 20)
-        p.drawString(100, 800, "Saju & Tarot Report")
-        
-        p.setFont("Helvetica", 12)
-        p.drawString(100, 750, f"Guide: {ai_guide}")
-        
-        # 목차 그리기
-        y_pos = 700
-        for line in toc_list.split('\n'):
-            p.drawString(100, y_pos, line)
-            y_pos -= 20
-            
-        p.showPage()
+        p.drawString(100, 800, "Saju Report")
         p.save()
-        
-        st.download_button(
-            label="PDF 다운로드",
-            data=buffer.getvalue(),
-            file_name="report.pdf",
-            mime="application/pdf"
-        )
-# 먼저 터미널에 설치: pip install korean-lunar-calendar
-from korean_lunar_calendar import KoreanLunarCalendar
-
-def get_saju_data(year, month, day, hour):
-    # 1. 만세력 도구 가져오기
-    calendar = KoreanLunarCalendar()
-    # 2. 양력 날짜를 넣어서 사주 글자 뽑기
-    calendar.setSolarDate(year, month, day)
-    
-    # 3. 사주 팔자 글자들 (예: 경오, 무인..)
-    gapja = calendar.getGapjaString() 
-    
-    # 4. 오행 점수 계산기 (아주 단순화한 버전)
-    # 실제로는 '갑/을=목', '병/정=화' 식으로 매칭합니다.
-    element_scores = {"목": 0, "화": 0, "토": 0, "금": 0, "수": 0}
-    
-    # 예시: 사주 글자에 특정 한자가 포함되면 점수 플러스!
-    if "甲" in gapja or "乙" in gapja: element_scores["목"] += 20
-    if "丙" in gapja or "丁" in gapja: element_scores["화"] += 20
-    # ... 이런식으로 8글자를 다 검사합니다.
-    
-    return gapja, element_scores
-
-# --- 스트림릿 화면에서 사용 예시 ---
-st.header("🔮 사주 분석 엔진 가동")
-if uploaded_file:
-    for index, row in df.iterrows():
-        # 엑셀에 '년', '월', '일' 컬럼이 있다고 가정
-        gapja_text, scores = get_saju_data(row['년'], row['월'], row['일'], 12)
-        st.write(f"### {row['이름']} 님의 사주: {gapja_text}")
-        
-        # 이 점수를 아까 만든 Matplotlib 그래프에 연결!
-        fig, ax = plt.subplots()
-        ax.bar(scores.keys(), scores.values(), color=['green', 'red', 'yellow', 'gray', 'blue'])
-        st.pyplot(fig)
-
-from korean_lunar_calendar import KoreanLunarCalendar
-
-def 사주_계산기(연, 월, 일):
-    calendar = KoreanLunarCalendar()
-    
-    # 1. 양력 날짜를 설정합니다.
-    calendar.setSolarDate(연, 월, 일)
-    
-    # 2. 사주 팔자(간지)를 한자로 가져옵니다.
-    # 예: "庚午年 戊寅月 丙戌日" 이런 식으로 나옵니다.
-    간지_결과 = calendar.getGapjaString()
-    
-    return 간지_결과
+        st.download_button("PDF 다운로드", data=buffer.getvalue(), file_name="report.pdf")
