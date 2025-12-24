@@ -119,41 +119,107 @@ def get_emoji_font(size):
 # ============================================
 # 원국표 이미지 생성
 # ============================================
-def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신살_data=None):
+def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신살_data=None, zodiac_path=None):
     """
     원국표 이미지 생성
     
     사주_data: calc_사주() 결과
     기본정보: {'이름': ..., '성별': ..., '나이': ..., '양력': ..., '음력': ...}
     신살_data: calc_신살() 결과 (optional)
+    zodiac_path: 12지 이미지 폴더 경로 (optional)
     """
+    
+    # 12지 이미지 파일명 매핑
+    지지_이미지 = {
+        '자': 'rat.png', '축': 'ox.png', '인': 'tager.png', '묘': 'rabbit.png',
+        '진': 'dragon.png', '사': 'snake.png', '오': 'horse.png', '미': 'sheep.png',
+        '신': 'monkey.png', '유': 'rooster.png', '술': 'dog.png', '해': 'pig.png'
+    }
+    
+    # 띠 이름 매핑
+    지지_띠 = {
+        '자': '쥐띠', '축': '소띠', '인': '호랑이띠', '묘': '토끼띠',
+        '진': '용띠', '사': '뱀띠', '오': '말띠', '미': '양띠',
+        '신': '원숭이띠', '유': '닭띠', '술': '개띠', '해': '돼지띠'
+    }
+    
+    # 테두리 설정 (둥근 모양, 얇게)
+    border_color = '#CCCCCC'
+    border_width = 1
+    border_radius = 8
     
     # 이미지 크기 (신살 있으면 높이 증가)
     width = 600
-    height = 505 if 신살_data else 445
+    height = 570 if 신살_data else 455
     
     # 이미지 생성
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
     
     # 폰트
+    font_name = get_font(18, bold=True)  # 이름용 큰 폰트
     font_title = get_font(14)
     font_large = get_font(36, bold=True)
     font_medium = get_font(14)
     font_small = get_font(12)
-    font_tiny = get_font(9)
+    font_sinsal = get_font(10)
+    font_info = get_font(12)  # 정보용 폰트
     
-    # ========== 상단 기본정보 ==========
-    y_start = 20
-    info_text = f"{기본정보['이름']}, {기본정보['성별']}, {기본정보['나이']}세"
-    draw.text((20, y_start), "기본정보", font=font_title, fill='#666666')
-    draw.text((100, y_start), info_text, font=font_title, fill='#333333')
+    # ========== 상단 정보 영역 (12지 + 기본정보) ==========
+    info_box_y = 8
+    info_box_height = 95
     
-    draw.text((20, y_start + 25), "양력", font=font_title, fill='#666666')
-    draw.text((100, y_start + 25), 기본정보['양력'], font=font_title, fill='#333333')
+    # 왼쪽: 12지 이미지 (원형 배경, 테두리 없음)
+    zodiac_box_x = 15
+    zodiac_circle_size = 85
+    zodiac_center_x = zodiac_box_x + zodiac_circle_size // 2
+    zodiac_center_y = info_box_y + zodiac_circle_size // 2 + 3
     
-    draw.text((20, y_start + 50), "음력", font=font_title, fill='#666666')
-    draw.text((100, y_start + 50), 기본정보['음력'], font=font_title, fill='#333333')
+    # 원형 배경 (연한 베이지색, 테두리 없음)
+    circle_bg_color = '#FFF8E7'
+    draw.ellipse(
+        [zodiac_center_x - zodiac_circle_size // 2, zodiac_center_y - zodiac_circle_size // 2,
+         zodiac_center_x + zodiac_circle_size // 2, zodiac_center_y + zodiac_circle_size // 2],
+        fill=circle_bg_color
+    )
+    
+    년지 = 사주_data['년주'][1]
+    띠_이름 = 지지_띠.get(년지, '')
+    
+    # 12지 이미지 삽입
+    zodiac_size = 70
+    zodiac_x = zodiac_center_x - zodiac_size // 2
+    zodiac_y = zodiac_center_y - zodiac_size // 2
+    
+    if zodiac_path and 년지 in 지지_이미지:
+        try:
+            zodiac_file = os.path.join(zodiac_path, 지지_이미지[년지])
+            if os.path.exists(zodiac_file):
+                zodiac_img = Image.open(zodiac_file)
+                zodiac_img = zodiac_img.resize((zodiac_size, zodiac_size), Image.Resampling.LANCZOS)
+                if zodiac_img.mode == 'RGBA':
+                    img.paste(zodiac_img, (zodiac_x, zodiac_y), zodiac_img)
+                else:
+                    img.paste(zodiac_img, (zodiac_x, zodiac_y))
+        except Exception as e:
+            pass
+    
+    # 오른쪽: 정보 텍스트
+    info_x = zodiac_box_x + zodiac_circle_size + 15
+    
+    # 이름 (큰 글씨)
+    draw.text((info_x, info_box_y + 5), 기본정보['이름'], font=font_name, fill='#333333')
+    
+    # 일간 오행
+    일간 = 사주_data['일주'][0]
+    일간_오행 = 천간_오행_map[일간]
+    draw.text((info_x, info_box_y + 30), f"일간: {일간} ({일간_오행})", font=font_info, fill='#666666')
+    
+    # 생년월일 (양력)
+    draw.text((info_x, info_box_y + 50), f"양력: {기본정보['양력']}", font=font_info, fill='#666666')
+    
+    # 음력
+    draw.text((info_x, info_box_y + 70), f"음력: {기본정보['음력']}  |  {띠_이름}", font=font_info, fill='#666666')
     
     # ========== 원국표 테이블 ==========
     table_y = 100
@@ -161,6 +227,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     cell_height_header = 30
     cell_height_main = 70
     cell_height_sub = 25
+    cell_height_sinsal = 50  # 신살 칸 높이 더 확대
     label_width = 65
     
     # 테이블 중앙 정렬
@@ -170,26 +237,35 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     headers = ['생시', '생일', '생월', '생년']
     columns = ['시', '일', '월', '년']
     
-    # 헤더 행
+    # 헤더 행 - 왼쪽 빈 칸 (테두리 추가)
+    draw.rectangle([margin_x, table_y, margin_x + label_width, table_y + cell_height_header], 
+                   fill='#F5F5F5', outline=border_color, width=border_width)
+    
+    # 헤더 행 - 데이터 칸
     draw.rectangle([margin_x + label_width, table_y, margin_x + table_width, table_y + cell_height_header], 
-                   fill='#F5F5F5', outline='#E0E0E0')
+                   fill='#F5F5F5', outline=border_color, width=border_width)
     
     for i, header in enumerate(headers):
-        x = margin_x + label_width + i * cell_width + cell_width // 2
-        draw.text((x, table_y + 8), header, font=font_medium, fill='#666666', anchor='mm')
+        x = margin_x + label_width + i * cell_width
+        # 셀 구분선
+        if i > 0:
+            draw.line([x, table_y, x, table_y + cell_height_header], fill=border_color, width=border_width)
+        # 텍스트 정중앙
+        draw.text((x + cell_width // 2, table_y + cell_height_header // 2), header, 
+                  font=font_medium, fill='#666666', anchor='mm')
     
     current_y = table_y + cell_height_header
     
     # ========== 천간십성 행 ==========
     draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sub],
-                   fill='#F9F9F9', outline='#E0E0E0')
+                   fill='#F9F9F9', outline=border_color, width=border_width)
     draw.text((margin_x + label_width // 2, current_y + cell_height_sub // 2), "천간십성", 
               font=font_small, fill='#666666', anchor='mm')
     
     for i, col in enumerate(columns):
         x = margin_x + label_width + i * cell_width
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sub],
-                       fill='#FFFFFF', outline='#E0E0E0')
+                       fill='#FFFFFF', outline=border_color, width=border_width)
         십성 = 사주_data['천간십성'][col]
         draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
                   십성, font=font_small, fill='#888888', anchor='mm')
@@ -198,7 +274,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # ========== 천간 행 ==========
     draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_main],
-                   fill='#F9F9F9', outline='#E0E0E0')
+                   fill='#F9F9F9', outline=border_color, width=border_width)
     draw.text((margin_x + label_width // 2, current_y + cell_height_main // 2), "천간", 
               font=font_medium, fill='#666666', anchor='mm')
     
@@ -221,7 +297,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
         text_color = 오행_색상[오행]['text']
         
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
-                       fill=bg_color, outline='#E0E0E0')
+                       fill=bg_color, outline=border_color, width=border_width)
         
         # 천간(한자) + 오행
         한자 = 천간_한자[천간]
@@ -238,7 +314,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # ========== 지지 행 ==========
     draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_main],
-                   fill='#F9F9F9', outline='#E0E0E0')
+                   fill='#F9F9F9', outline=border_color, width=border_width)
     draw.text((margin_x + label_width // 2, current_y + cell_height_main // 2), "지지", 
               font=font_medium, fill='#666666', anchor='mm')
     
@@ -262,7 +338,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
         text_color = 오행_색상[오행]['text']
         
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
-                       fill=bg_color, outline='#E0E0E0')
+                       fill=bg_color, outline=border_color, width=border_width)
         
         # 지지(한자)
         한자 = 지지_한자[지지]
@@ -284,14 +360,14 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # ========== 지지십성 행 ==========
     draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sub],
-                   fill='#F9F9F9', outline='#E0E0E0')
+                   fill='#F9F9F9', outline=border_color, width=border_width)
     draw.text((margin_x + label_width // 2, current_y + cell_height_sub // 2), "지지십성", 
               font=font_small, fill='#666666', anchor='mm')
     
     for i, col in enumerate(columns):
         x = margin_x + label_width + i * cell_width
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sub],
-                       fill='#FFFFFF', outline='#E0E0E0')
+                       fill='#FFFFFF', outline=border_color, width=border_width)
         십성 = 사주_data['지지십성'][col]
         draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
                   십성, font=font_small, fill='#888888', anchor='mm')
@@ -300,14 +376,14 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # ========== 지장간 행 ==========
     draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sub],
-                   fill='#F9F9F9', outline='#E0E0E0')
+                   fill='#F9F9F9', outline=border_color, width=border_width)
     draw.text((margin_x + label_width // 2, current_y + cell_height_sub // 2), "지장간", 
               font=font_small, fill='#666666', anchor='mm')
     
     for i, col in enumerate(columns):
         x = margin_x + label_width + i * cell_width
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sub],
-                       fill='#FFFFFF', outline='#E0E0E0')
+                       fill='#FFFFFF', outline=border_color, width=border_width)
         지장간 = 사주_data['지장간'][col]
         draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
                   지장간, font=font_small, fill='#888888', anchor='mm')
@@ -316,14 +392,14 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # ========== 12운성 행 ==========
     draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sub],
-                   fill='#F9F9F9', outline='#E0E0E0')
+                   fill='#F9F9F9', outline=border_color, width=border_width)
     draw.text((margin_x + label_width // 2, current_y + cell_height_sub // 2), "12운성", 
               font=font_small, fill='#666666', anchor='mm')
     
     for i, col in enumerate(columns):
         x = margin_x + label_width + i * cell_width
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sub],
-                       fill='#FFFFFF', outline='#E0E0E0')
+                       fill='#FFFFFF', outline=border_color, width=border_width)
         운성 = 사주_data['12운성'][col]
         draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
                   운성, font=font_small, fill='#888888', anchor='mm')
@@ -332,14 +408,14 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # ========== 12신살 행 ==========
     draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sub],
-                   fill='#F9F9F9', outline='#E0E0E0')
+                   fill='#F9F9F9', outline=border_color, width=border_width)
     draw.text((margin_x + label_width // 2, current_y + cell_height_sub // 2), "12신살", 
               font=font_small, fill='#666666', anchor='mm')
     
     for i, col in enumerate(columns):
         x = margin_x + label_width + i * cell_width
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sub],
-                       fill='#FFFFFF', outline='#E0E0E0')
+                       fill='#FFFFFF', outline=border_color, width=border_width)
         신살 = 사주_data['12신살'][col]
         draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
                   신살, font=font_small, fill='#888888', anchor='mm')
@@ -348,47 +424,45 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # ========== 신살 행 (옵션) ==========
     if 신살_data:
-        cell_height_sinsal = 45
-        
-        # 천간 신살 행
-        draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sub],
-                       fill='#FFF9E6', outline='#E0E0E0')
-        draw.text((margin_x + label_width // 2, current_y + cell_height_sub // 2), "천간신살", 
+        # 천간 신살 행 (칸 높이 확대)
+        draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sinsal],
+                       fill='#FFF9E6', outline=border_color, width=border_width)
+        draw.text((margin_x + label_width // 2, current_y + cell_height_sinsal // 2), "천간신살", 
                   font=font_small, fill='#666666', anchor='mm')
         
         for i, col in enumerate(columns):
             x = margin_x + label_width + i * cell_width
-            draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sub],
-                           fill='#FFFDF5', outline='#E0E0E0')
+            draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sinsal],
+                           fill='#FFFDF5', outline=border_color, width=border_width)
             신살_list = 신살_data['천간신살'][col]
             if 신살_list:
                 신살_text = '\n'.join(신살_list[:2])  # 최대 2개만
-                draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
-                          신살_text, font=font_tiny, fill='#996600', anchor='mm')
+                draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), 
+                          신살_text, font=font_sinsal, fill='#996600', anchor='mm')
             else:
-                draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
-                          '×', font=font_small, fill='#CCCCCC', anchor='mm')
+                draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), 
+                          '-', font=font_sinsal, fill='#CCCCCC', anchor='mm')
         
-        current_y += cell_height_sub
+        current_y += cell_height_sinsal
         
-        # 지지 신살 행
+        # 지지 신살 행 (칸 높이 확대)
         draw.rectangle([margin_x, current_y, margin_x + label_width, current_y + cell_height_sinsal],
-                       fill='#F0F9FF', outline='#E0E0E0')
+                       fill='#F0F9FF', outline=border_color, width=border_width)
         draw.text((margin_x + label_width // 2, current_y + cell_height_sinsal // 2), "지지신살", 
                   font=font_small, fill='#666666', anchor='mm')
         
         for i, col in enumerate(columns):
             x = margin_x + label_width + i * cell_width
             draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sinsal],
-                           fill='#F8FCFF', outline='#E0E0E0')
+                           fill='#F8FCFF', outline=border_color, width=border_width)
             신살_list = 신살_data['지지신살'][col]
             if 신살_list:
                 신살_text = '\n'.join(신살_list[:3])  # 최대 3개만
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), 
-                          신살_text, font=font_tiny, fill='#006699', anchor='mm')
+                          신살_text, font=font_sinsal, fill='#006699', anchor='mm')
             else:
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), 
-                          '×', font=font_small, fill='#CCCCCC', anchor='mm')
+                          '-', font=font_sinsal, fill='#CCCCCC', anchor='mm')
         
         current_y += cell_height_sinsal
     
@@ -1186,7 +1260,8 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
     start_x = (width - total_width) // 2
     row_height = 30
     border_color = '#CCCCCC'
-    border_width = 2
+    border_width = 1  # 얇은 테두리
+    border_radius = 5  # 둥근 모서리
     
     # 헤더
     headers = ['분류', '십성', '음양', '오행', '유무', '보조', '키워드']
