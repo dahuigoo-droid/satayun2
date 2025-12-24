@@ -916,3 +916,190 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
     # 저장
     img.save(output_path, 'PNG')
     return output_path
+
+
+# ============================================
+# 십성표 이미지 생성
+# ============================================
+def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
+    """
+    십성 분석표 이미지 생성
+    - 비겁(비견/겁재), 식상(식신/상관), 재성(편재/정재), 관성(편관/정관), 인성(편인/정인)
+    """
+    
+    일간 = 사주_data['일주'][0]
+    일간_오행 = 천간_오행_map[일간]
+    
+    # 사주에서 십성 개수 세기
+    십성_count = {
+        '비견': 0, '겁재': 0,
+        '식신': 0, '상관': 0,
+        '편재': 0, '정재': 0,
+        '편관': 0, '정관': 0,
+        '편인': 0, '정인': 0,
+    }
+    
+    # 천간 십성 카운트
+    for col in ['년', '월', '시']:
+        십성 = 사주_data['천간십성'][col]
+        if 십성 in 십성_count:
+            십성_count[십성] += 1
+    
+    # 지지 십성 카운트
+    for col in ['년', '월', '일', '시']:
+        십성 = 사주_data['지지십성'][col]
+        if 십성 in 십성_count:
+            십성_count[십성] += 1
+    
+    # 십성별 오행 매핑 (일간 기준)
+    오행_순서 = ['목', '화', '토', '금', '수']
+    일간_오행_idx = 오행_순서.index(일간_오행)
+    
+    # 십성별 오행 계산
+    십성_오행 = {
+        '비견': 일간_오행, '겁재': 일간_오행,
+        '식신': 오행_순서[(일간_오행_idx + 1) % 5], 
+        '상관': 오행_순서[(일간_오행_idx + 1) % 5],
+        '편재': 오행_순서[(일간_오행_idx + 2) % 5], 
+        '정재': 오행_순서[(일간_오행_idx + 2) % 5],
+        '편관': 오행_순서[(일간_오행_idx + 3) % 5], 
+        '정관': 오행_순서[(일간_오행_idx + 3) % 5],
+        '편인': 오행_순서[(일간_오행_idx + 4) % 5], 
+        '정인': 오행_순서[(일간_오행_idx + 4) % 5],
+    }
+    
+    # 강도 판정
+    def get_강도(count):
+        if count == 0:
+            return '없음'
+        elif count == 1:
+            return '약함'
+        elif count == 2:
+            return '보통'
+        elif count == 3:
+            return '강함'
+        else:
+            return '매우 강함'
+    
+    # 십성 분류 데이터
+    십성_분류 = [
+        {'분류': '비겁', '십성들': [('비견', '양'), ('겁재', '음')], 'color': '#A8D5BA'},
+        {'분류': '식상', '십성들': [('식신', '양'), ('상관', '음')], 'color': '#87CEEB'},
+        {'분류': '재성', '십성들': [('편재', '양'), ('정재', '음')], 'color': '#90EE90'},
+        {'분류': '관성', '십성들': [('편관', '양'), ('정관', '음')], 'color': '#FFB6C1'},
+        {'분류': '인성', '십성들': [('편인', '양'), ('정인', '음')], 'color': '#FFFACD'},
+    ]
+    
+    # 이미지 크기
+    width = 700
+    height = 380
+    
+    # 이미지 생성
+    img = Image.new('RGB', (width, height), '#2D2D2D')
+    draw = ImageDraw.Draw(img)
+    
+    # 폰트
+    font_title = get_font(16)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    # ========== 상단 제목 ==========
+    y_start = 15
+    draw.text((width // 2, y_start), f"{기본정보['이름']}님 십성 분석표", 
+              font=font_title, fill='#FFFFFF', anchor='mm')
+    draw.text((width // 2, y_start + 22), f"(일간: {일간} / {일간_오행})", 
+              font=font_small, fill='#AAAAAA', anchor='mm')
+    
+    # ========== 테이블 ==========
+    table_y = 55
+    
+    # 열 너비
+    col_widths = [70, 70, 60, 70, 90, 200]  # 분류, 십성, 음양, 오행, 개수, 강도
+    row_height = 28
+    
+    # 헤더
+    headers = ['분류', '십성', '음양', '오행', '개수', '강도']
+    x = 20
+    for i, header in enumerate(headers):
+        draw.rectangle([x, table_y, x + col_widths[i], table_y + 30],
+                       fill='#444444', outline='#555555')
+        draw.text((x + col_widths[i] // 2, table_y + 15), header,
+                  font=font_header, fill='#FFFFFF', anchor='mm')
+        x += col_widths[i]
+    
+    # 데이터 행
+    current_y = table_y + 30
+    
+    for 분류_data in 십성_분류:
+        분류명 = 분류_data['분류']
+        분류_color = 분류_data['color']
+        십성들 = 분류_data['십성들']
+        
+        # 분류별 2행
+        for idx, (십성명, 음양) in enumerate(십성들):
+            x = 20
+            
+            # 분류 (첫 행만)
+            if idx == 0:
+                draw.rectangle([x, current_y, x + col_widths[0], current_y + row_height * 2],
+                               fill='#3D3D3D', outline='#555555')
+                draw.text((x + col_widths[0] // 2, current_y + row_height),
+                          분류명, font=font_medium, fill='#FFFFFF', anchor='mm')
+            x += col_widths[0]
+            
+            # 십성
+            draw.rectangle([x, current_y, x + col_widths[1], current_y + row_height],
+                           fill=분류_color, outline='#555555')
+            draw.text((x + col_widths[1] // 2, current_y + row_height // 2),
+                      십성명, font=font_medium, fill='#333333', anchor='mm')
+            x += col_widths[1]
+            
+            # 음양
+            음양_color = '#FFCCCC' if 음양 == '양' else '#CCE5FF'
+            draw.rectangle([x, current_y, x + col_widths[2], current_y + row_height],
+                           fill=음양_color, outline='#555555')
+            draw.text((x + col_widths[2] // 2, current_y + row_height // 2),
+                      음양, font=font_medium, fill='#333333', anchor='mm')
+            x += col_widths[2]
+            
+            # 오행
+            오행 = 십성_오행[십성명]
+            오행_bg = 오행_색상[오행]['천간_bg']
+            오행_text = 오행_색상[오행]['text']
+            draw.rectangle([x, current_y, x + col_widths[3], current_y + row_height],
+                           fill=오행_bg, outline='#555555')
+            draw.text((x + col_widths[3] // 2, current_y + row_height // 2),
+                      오행, font=font_medium, fill=오행_text, anchor='mm')
+            x += col_widths[3]
+            
+            # 개수
+            count = 십성_count[십성명]
+            draw.rectangle([x, current_y, x + col_widths[4], current_y + row_height],
+                           fill='#3D3D3D', outline='#555555')
+            count_color = '#FF6B6B' if count >= 3 else '#FFFFFF' if count > 0 else '#666666'
+            draw.text((x + col_widths[4] // 2, current_y + row_height // 2),
+                      f"{count}개", font=font_medium, fill=count_color, anchor='mm')
+            x += col_widths[4]
+            
+            # 강도
+            강도 = get_강도(count)
+            강도_color = '#3D3D3D'
+            if 강도 == '매우 강함':
+                강도_color = '#5C3D3D'
+            elif 강도 == '강함':
+                강도_color = '#4D4D3D'
+            elif 강도 == '없음':
+                강도_color = '#3D3D4D'
+            
+            draw.rectangle([x, current_y, x + col_widths[5], current_y + row_height],
+                           fill=강도_color, outline='#555555')
+            강도_text_color = '#FF6B6B' if 강도 in ['강함', '매우 강함'] else '#AAAAAA' if 강도 == '없음' else '#FFFFFF'
+            draw.text((x + col_widths[5] // 2, current_y + row_height // 2),
+                      강도, font=font_medium, fill=강도_text_color, anchor='mm')
+            
+            current_y += row_height
+    
+    # 저장
+    img.save(output_path, 'PNG')
+    return output_path
