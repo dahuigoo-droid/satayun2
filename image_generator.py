@@ -1617,3 +1617,1057 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
     # 저장
     img.save(output_path, 'PNG')
     return output_path
+
+
+# ============================================
+# 12운성표 이미지 생성
+# ============================================
+def create_12운성표(사주_data, 기본정보, output_path="12운성표.png"):
+    """12운성 전체 테이블 이미지 생성"""
+    
+    from saju_calculator import calc_12운성_전체, 지지, 운성_순서
+    
+    일간 = 사주_data['일주'][0]
+    운성_전체 = calc_12운성_전체(일간)
+    
+    # 원국 지지들
+    원국_지지 = {
+        '년': 사주_data['년주'][1],
+        '월': 사주_data['월주'][1],
+        '일': 사주_data['일주'][1],
+        '시': 사주_data['시주'][1],
+    }
+    
+    # 이미지 크기
+    width = 700
+    height = 420
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    # 제목
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 12운성표 (일간: {일간})", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    # 운성별 에너지 레벨
+    에너지 = {
+        '장생': ('상승', '#4CAF50'), '목욕': ('불안', '#FFC107'), '관대': ('성장', '#8BC34A'),
+        '건록': ('최강', '#2196F3'), '제왕': ('정점', '#1565C0'), '쇠': ('하강', '#FF9800'),
+        '병': ('약함', '#F44336'), '사': ('최약', '#B71C1C'), '묘': ('잠복', '#795548'),
+        '절': ('단절', '#9E9E9E'), '태': ('잉태', '#E1BEE7'), '양': ('양육', '#CE93D8'),
+    }
+    
+    # 테이블
+    table_y = 55
+    col_width = 55
+    row_height = 28
+    start_x = 35
+    
+    # 헤더 (지지)
+    draw.rectangle([start_x, table_y, start_x + 50, table_y + 30],
+                   fill='#E8E8E8', outline='#CCCCCC')
+    draw.text((start_x + 25, table_y + 15), "지지", 
+              font=font_header, fill='#333333', anchor='mm')
+    
+    for i, 지지명 in enumerate(지지):
+        x = start_x + 50 + i * col_width
+        # 원국에 있는 지지 강조
+        is_원국 = 지지명 in 원국_지지.values()
+        bg_color = '#E3F2FD' if is_원국 else '#F5F5F5'
+        draw.rectangle([x, table_y, x + col_width, table_y + 30],
+                       fill=bg_color, outline='#CCCCCC')
+        draw.text((x + col_width // 2, table_y + 15), 지지명, 
+                  font=font_header, fill='#333333', anchor='mm')
+    
+    # 운성 행
+    current_y = table_y + 30
+    draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+                   fill='#E8E8E8', outline='#CCCCCC')
+    draw.text((start_x + 25, current_y + row_height // 2), "운성", 
+              font=font_header, fill='#333333', anchor='mm')
+    
+    for i, 지지명 in enumerate(지지):
+        x = start_x + 50 + i * col_width
+        운성 = 운성_전체[지지명]
+        에너지_상태, 색상 = 에너지[운성]
+        
+        is_원국 = 지지명 in 원국_지지.values()
+        bg_color = '#E3F2FD' if is_원국 else '#FFFFFF'
+        draw.rectangle([x, current_y, x + col_width, current_y + row_height],
+                       fill=bg_color, outline='#CCCCCC')
+        draw.text((x + col_width // 2, current_y + row_height // 2), 운성, 
+                  font=font_medium, fill=색상, anchor='mm')
+    
+    # 에너지 행
+    current_y += row_height
+    draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+                   fill='#E8E8E8', outline='#CCCCCC')
+    draw.text((start_x + 25, current_y + row_height // 2), "에너지", 
+              font=font_header, fill='#333333', anchor='mm')
+    
+    for i, 지지명 in enumerate(지지):
+        x = start_x + 50 + i * col_width
+        운성 = 운성_전체[지지명]
+        에너지_상태, 색상 = 에너지[운성]
+        
+        is_원국 = 지지명 in 원국_지지.values()
+        bg_color = '#E3F2FD' if is_원국 else '#FFFFFF'
+        draw.rectangle([x, current_y, x + col_width, current_y + row_height],
+                       fill=bg_color, outline='#CCCCCC')
+        draw.text((x + col_width // 2, current_y + row_height // 2), 에너지_상태, 
+                  font=font_small, fill='#666666', anchor='mm')
+    
+    # 내 사주 운성 요약
+    summary_y = current_y + 50
+    draw.rectangle([20, summary_y, width - 20, summary_y + 100],
+                   fill='#FAFAFA', outline='#E0E0E0')
+    draw.text((width // 2, summary_y + 15), "[ 내 사주 12운성 ]", 
+              font=font_header, fill='#333333', anchor='mm')
+    
+    col_positions = [100, 250, 400, 550]
+    labels = ['년주', '월주', '일주', '시주']
+    cols = ['년', '월', '일', '시']
+    
+    for i, (label, col) in enumerate(zip(labels, cols)):
+        x = col_positions[i]
+        지지명 = 원국_지지[col]
+        운성 = 운성_전체[지지명]
+        에너지_상태, 색상 = 에너지[운성]
+        
+        draw.text((x, summary_y + 40), label, font=font_medium, fill='#666666', anchor='mm')
+        draw.text((x, summary_y + 60), f"{지지명} -> {운성}", font=font_medium, fill=색상, anchor='mm')
+        draw.text((x, summary_y + 80), f"({에너지_상태})", font=font_small, fill='#999999', anchor='mm')
+    
+    # 범례
+    legend_y = summary_y + 115
+    draw.text((20, legend_y), "강한 운성: 건록, 제왕, 관대", font=font_small, fill='#1565C0', anchor='lm')
+    draw.text((250, legend_y), "약한 운성: 병, 사, 묘, 절", font=font_small, fill='#C62828', anchor='lm')
+    draw.text((450, legend_y), "시작 운성: 장생, 태, 양", font=font_small, fill='#7B1FA2', anchor='lm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 지장간표 이미지 생성
+# ============================================
+def create_지장간표(사주_data, 기본정보, output_path="지장간표.png"):
+    """지장간 테이블 이미지 생성"""
+    
+    from saju_calculator import calc_지장간_전체, 지지
+    
+    지장간_전체 = calc_지장간_전체()
+    
+    원국_지지 = {
+        '년': 사주_data['년주'][1],
+        '월': 사주_data['월주'][1],
+        '일': 사주_data['일주'][1],
+        '시': 사주_data['시주'][1],
+    }
+    
+    width = 700
+    height = 380
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 지장간표", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    table_y = 55
+    col_width = 55
+    row_height = 30
+    start_x = 35
+    
+    # 헤더
+    draw.rectangle([start_x, table_y, start_x + 50, table_y + 30],
+                   fill='#E8E8E8', outline='#CCCCCC')
+    draw.text((start_x + 25, table_y + 15), "구분", 
+              font=font_header, fill='#333333', anchor='mm')
+    
+    for i, 지지명 in enumerate(지지):
+        x = start_x + 50 + i * col_width
+        is_원국 = 지지명 in 원국_지지.values()
+        bg_color = '#E3F2FD' if is_원국 else '#E8E8E8'
+        draw.rectangle([x, table_y, x + col_width, table_y + 30],
+                       fill=bg_color, outline='#CCCCCC')
+        draw.text((x + col_width // 2, table_y + 15), 지지명, 
+                  font=font_header, fill='#333333', anchor='mm')
+    
+    # 여기, 중기, 본기 행
+    행_이름 = ['여기', '중기', '본기']
+    
+    for row_idx, 행 in enumerate(행_이름):
+        current_y = table_y + 30 + row_idx * row_height
+        
+        draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+                       fill='#F5F5F5', outline='#CCCCCC')
+        draw.text((start_x + 25, current_y + row_height // 2), 행, 
+                  font=font_medium, fill='#333333', anchor='mm')
+        
+        for i, 지지명 in enumerate(지지):
+            x = start_x + 50 + i * col_width
+            지장간 = 지장간_전체[지지명][행]
+            
+            is_원국 = 지지명 in 원국_지지.values()
+            bg_color = '#E3F2FD' if is_원국 else '#FFFFFF'
+            
+            draw.rectangle([x, current_y, x + col_width, current_y + row_height],
+                           fill=bg_color, outline='#CCCCCC')
+            text = 지장간 if 지장간 else '-'
+            color = '#333333' if 지장간 else '#CCCCCC'
+            draw.text((x + col_width // 2, current_y + row_height // 2), text, 
+                      font=font_medium, fill=color, anchor='mm')
+    
+    # 내 사주 지장간 요약
+    summary_y = table_y + 30 + len(행_이름) * row_height + 30
+    draw.rectangle([20, summary_y, width - 20, summary_y + 90],
+                   fill='#FAFAFA', outline='#E0E0E0')
+    draw.text((width // 2, summary_y + 15), "[ 내 사주 지장간 ]", 
+              font=font_header, fill='#333333', anchor='mm')
+    
+    col_positions = [100, 250, 400, 550]
+    labels = ['년지', '월지', '일지', '시지']
+    cols = ['년', '월', '일', '시']
+    
+    for i, (label, col) in enumerate(zip(labels, cols)):
+        x = col_positions[i]
+        지지명 = 원국_지지[col]
+        지장간 = 지장간_전체[지지명]
+        
+        draw.text((x, summary_y + 40), f"{label}: {지지명}", font=font_medium, fill='#666666', anchor='mm')
+        
+        지장간_str = []
+        if 지장간['여기']:
+            지장간_str.append(지장간['여기'])
+        if 지장간['중기']:
+            지장간_str.append(지장간['중기'])
+        if 지장간['본기']:
+            지장간_str.append(지장간['본기'])
+        
+        draw.text((x, summary_y + 65), ' '.join(지장간_str), font=font_medium, fill='#1565C0', anchor='mm')
+    
+    desc_y = summary_y + 100
+    draw.text((20, desc_y), "* 지장간: 지지 속에 숨어있는 천간 (본기가 가장 강함)", 
+              font=font_small, fill='#666666', anchor='lm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 합충형파해표 이미지 생성
+# ============================================
+def create_합충형파해표(사주_data, 기본정보, output_path="합충형파해표.png"):
+    """합충형파해 관계 분석 이미지"""
+    
+    from saju_calculator import calc_합충형파해, calc_천간합
+    
+    합충형파해 = calc_합충형파해(사주_data)
+    천간합_결과 = calc_천간합(사주_data)
+    
+    width = 650
+    height = 500
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(13, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 합충형파해 분석", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    # 원국 표시
+    원국_y = 50
+    draw.rectangle([20, 원국_y, width - 20, 원국_y + 50],
+                   fill='#FAFAFA', outline='#E0E0E0')
+    
+    labels = ['시주', '일주', '월주', '년주']
+    cols = ['시', '일', '월', '년']
+    col_positions = [100, 220, 380, 520]
+    
+    for i, (label, col) in enumerate(zip(labels, cols)):
+        x = col_positions[i]
+        천간 = 사주_data[f'{col}주'][0]
+        지지 = 사주_data[f'{col}주'][1]
+        draw.text((x, 원국_y + 18), label, font=font_small, fill='#666666', anchor='mm')
+        draw.text((x, 원국_y + 38), f"{천간}{지지}", font=font_header, fill='#333333', anchor='mm')
+    
+    # 분석 결과
+    current_y = 원국_y + 70
+    
+    관계_목록 = [
+        ('천간합', 천간합_결과, '#1565C0', '합하여 새로운 오행'),
+        ('육합', 합충형파해['육합'], '#2196F3', '두 지지가 합'),
+        ('삼합', 합충형파해['삼합'], '#4CAF50', '세 지지가 합'),
+        ('방합', 합충형파해['방합'], '#8BC34A', '계절 합'),
+        ('충', 합충형파해['충'], '#F44336', '대립/변동'),
+        ('형', 합충형파해['형'], '#E91E63', '형벌/시련'),
+        ('파', 합충형파해['파'], '#FF9800', '깨짐'),
+        ('해', 합충형파해['해'], '#9C27B0', '해침'),
+    ]
+    
+    row_height = 42
+    
+    for 관계명, 결과, 색상, 설명 in 관계_목록:
+        has_result = len(결과) > 0
+        bg_color = '#FFF3E0' if has_result and 관계명 in ['충', '형', '파', '해'] else '#E8F5E9' if has_result else '#F5F5F5'
+        
+        draw.rectangle([20, current_y, width - 20, current_y + row_height],
+                       fill=bg_color, outline='#E0E0E0')
+        
+        draw.text((80, current_y + row_height // 2), 관계명, 
+                  font=font_header, fill=색상, anchor='mm')
+        
+        if has_result:
+            if 관계명 == '천간합':
+                result_str = ', '.join([f"{r['천간']}->{r['합화']}" for r in 결과])
+            elif 관계명 in ['삼합', '방합']:
+                result_str = ', '.join([f"{r['오행']}({'-'.join(r['지지'])})" for r in 결과])
+            elif 관계명 == '육합':
+                result_str = ', '.join([f"{r['지지']}->{r['합화']}" for r in 결과])
+            else:
+                result_str = ', '.join([f"{r['지지']}({r['위치']})" for r in 결과])
+            
+            draw.text((350, current_y + 13), result_str, font=font_medium, fill='#333333', anchor='mm')
+            draw.text((350, current_y + 30), 설명, font=font_small, fill='#666666', anchor='mm')
+        else:
+            draw.text((350, current_y + row_height // 2), "해당 없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+        
+        current_y += row_height
+    
+    # 요약
+    summary_y = current_y + 10
+    합_count = len(천간합_결과) + len(합충형파해['육합']) + len(합충형파해['삼합']) + len(합충형파해['방합'])
+    충돌_count = len(합충형파해['충']) + len(합충형파해['형']) + len(합충형파해['파']) + len(합충형파해['해'])
+    
+    draw.rectangle([20, summary_y, width - 20, summary_y + 40],
+                   fill='#FAFAFA', outline='#E0E0E0')
+    
+    총평 = "합이 많아 조화로움" if 합_count > 충돌_count else "충돌이 있어 변동 있음" if 충돌_count > 합_count else "균형"
+    총평_color = '#4CAF50' if 합_count > 충돌_count else '#F44336' if 충돌_count > 합_count else '#FF9800'
+    
+    draw.text((width // 2, summary_y + 20), f"합: {합_count}개 | 충돌: {충돌_count}개 -> {총평}", 
+              font=font_medium, fill=총평_color, anchor='mm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 궁성표 이미지 생성  
+# ============================================
+def create_궁성표(사주_data, 기본정보, output_path="궁성표.png"):
+    """사주 궁성 분석 이미지"""
+    
+    from saju_calculator import calc_궁성
+    
+    궁성 = calc_궁성(사주_data)
+    
+    width = 700
+    height = 350
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(13, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 사주 궁성표", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    box_width = 155
+    box_height = 110
+    start_x = 30
+    box_y = 55
+    gap = 10
+    
+    궁_색상 = {'년주': '#E3F2FD', '월주': '#E8F5E9', '일주': '#FFF3E0', '시주': '#F3E5F5'}
+    헤더_색상 = {'년주': '#1565C0', '월주': '#2E7D32', '일주': '#E65100', '시주': '#7B1FA2'}
+    
+    for i, (주, 정보) in enumerate(궁성.items()):
+        x = start_x + i * (box_width + gap)
+        
+        draw.rectangle([x, box_y, x + box_width, box_y + box_height],
+                       fill=궁_색상[주], outline='#CCCCCC')
+        
+        draw.rectangle([x, box_y, x + box_width, box_y + 28],
+                       fill=헤더_색상[주], outline=헤더_색상[주])
+        draw.text((x + box_width // 2, box_y + 14), 주, 
+                  font=font_header, fill='#FFFFFF', anchor='mm')
+        
+        draw.text((x + box_width // 2, box_y + 48), f"{정보['천간']}{정보['지지']}", 
+                  font=get_font(16, bold=True), fill='#333333', anchor='mm')
+        
+        draw.text((x + box_width // 2, box_y + 72), 정보['궁'], 
+                  font=font_small, fill=헤더_색상[주], anchor='mm')
+        
+        의미_short = 정보['의미'][:20]
+        draw.text((x + box_width // 2, box_y + 92), 의미_short, 
+                  font=font_small, fill='#666666', anchor='mm')
+    
+    # 시간대 설명
+    time_y = box_y + box_height + 20
+    draw.rectangle([20, time_y, width - 20, time_y + 50],
+                   fill='#FAFAFA', outline='#E0E0E0')
+    
+    draw.text((width // 2, time_y + 15), "[ 운세 적용 시기 ]", font=font_header, fill='#333333', anchor='mm')
+    draw.text((width // 2, time_y + 35), "년주:1~15세 | 월주:15~30세 | 일주:30~45세 | 시주:45세~", 
+              font=font_medium, fill='#666666', anchor='mm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 육친표 이미지 생성
+# ============================================
+def create_육친표(사주_data, 기본정보, gender='남', output_path="육친표.png"):
+    """육친 관계 분석 이미지"""
+    
+    from saju_calculator import calc_육친
+    
+    육친 = calc_육친(사주_data, gender)
+    
+    width = 650
+    height = 320
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    성별_텍스트 = '남성' if gender == '남' else '여성'
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 육친표 ({성별_텍스트})", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    table_y = 55
+    col_width = 145
+    row_height = 32
+    start_x = 25
+    
+    headers = ['구분', '년주', '월주', '일주', '시주']
+    for i, h in enumerate(headers):
+        if i == 0:
+            x, w = start_x, 50
+        else:
+            x, w = start_x + 50 + (i-1) * col_width, col_width
+        draw.rectangle([x, table_y, x + w, table_y + 28], fill='#E8E8E8', outline='#CCCCCC')
+        draw.text((x + w // 2, table_y + 14), h, font=font_header, fill='#333333', anchor='mm')
+    
+    rows = [('천간십성', '천간'), ('천간육친', '천간'), ('지지십성', '지지'), ('지지육친', '지지')]
+    
+    for row_idx, (행_이름, key) in enumerate(rows):
+        current_y = table_y + 28 + row_idx * row_height
+        
+        draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+                       fill='#F5F5F5', outline='#CCCCCC')
+        draw.text((start_x + 25, current_y + row_height // 2), 행_이름[:4], 
+                  font=font_small, fill='#333333', anchor='mm')
+        
+        for i, col in enumerate(['년', '월', '일', '시']):
+            x = start_x + 50 + i * col_width
+            if '십성' in 행_이름:
+                값 = 육친[col][key]['십성']
+                color = '#1565C0'
+            else:
+                값 = 육친[col][key]['육친']
+                color = '#E65100'
+            
+            bg = '#FFFFFF' if '십성' in 행_이름 else '#FFF8E1'
+            draw.rectangle([x, current_y, x + col_width, current_y + row_height],
+                           fill=bg, outline='#CCCCCC')
+            draw.text((x + col_width // 2, current_y + row_height // 2), 값, 
+                      font=font_medium, fill=color, anchor='mm')
+    
+    ref_y = table_y + 28 + len(rows) * row_height + 20
+    draw.rectangle([20, ref_y, width - 20, ref_y + 55], fill='#FAFAFA', outline='#E0E0E0')
+    draw.text((width // 2, ref_y + 12), f"[ 육친 참고 ({성별_텍스트}) ]", font=font_header, fill='#333333', anchor='mm')
+    
+    if gender == '남':
+        참고 = "정재=아내 | 편재=아버지 | 정관=딸 | 편관=아들 | 정인=어머니"
+    else:
+        참고 = "정관=남편 | 편관=애인 | 식신=딸 | 상관=아들 | 정인=어머니"
+    draw.text((width // 2, ref_y + 38), 참고, font=font_small, fill='#666666', anchor='mm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 납음오행표 이미지 생성
+# ============================================
+def create_납음오행표(사주_data, 기본정보, output_path="납음오행표.png"):
+    """납음오행 분석 이미지"""
+    
+    from saju_calculator import calc_납음오행
+    
+    납음 = calc_납음오행(사주_data)
+    
+    width = 650
+    height = 300
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(13, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 납음오행표", font=font_title, fill='#333333', anchor='mm')
+    draw.text((width // 2, 40), "(60갑자의 소리 오행)", font=font_small, fill='#666666', anchor='mm')
+    
+    box_width = 145
+    box_height = 120
+    start_x = 30
+    box_y = 60
+    gap = 10
+    
+    오행_색상 = {'목': '#4CAF50', '화': '#F44336', '토': '#795548', '금': '#FFC107', '수': '#2196F3'}
+    
+    for i, (col, label) in enumerate([('년', '년주'), ('월', '월주'), ('일', '일주'), ('시', '시주')]):
+        x = start_x + i * (box_width + gap)
+        정보 = 납음[col]
+        색상 = 오행_색상.get(정보['오행'], '#333333')
+        
+        draw.rectangle([x, box_y, x + box_width, box_y + box_height], fill='#FAFAFA', outline='#E0E0E0')
+        draw.rectangle([x, box_y, x + box_width, box_y + 25], fill=색상, outline=색상)
+        draw.text((x + box_width // 2, box_y + 12), label, font=font_header, fill='#FFFFFF', anchor='mm')
+        
+        draw.text((x + box_width // 2, box_y + 45), 정보['간지'], font=get_font(14, bold=True), fill='#333333', anchor='mm')
+        draw.text((x + box_width // 2, box_y + 70), 정보['납음'], font=font_medium, fill=색상, anchor='mm')
+        draw.text((x + box_width // 2, box_y + 90), f"({정보['오행']})", font=font_small, fill='#666666', anchor='mm')
+        draw.text((x + box_width // 2, box_y + 108), 정보['설명'][:10], font=font_small, fill='#999999', anchor='mm')
+    
+    summary_y = box_y + box_height + 15
+    draw.rectangle([20, summary_y, width - 20, summary_y + 40], fill='#FFF8E1', outline='#FFE082')
+    일주_납음 = 납음['일']
+    draw.text((width // 2, summary_y + 20), f"본명 납음: {일주_납음['납음']}({일주_납음['오행']}) - {일주_납음['설명'][:15]}", 
+              font=font_medium, fill='#E65100', anchor='mm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 격국표 이미지 생성
+# ============================================
+def create_격국표(사주_data, 기본정보, output_path="격국표.png"):
+    """격국 분석 이미지"""
+    
+    from saju_calculator import calc_격국
+    
+    격국 = calc_격국(사주_data)
+    
+    width = 550
+    height = 280
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(14, bold=True)
+    font_medium = get_font(12)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 격국 분석", font=font_title, fill='#333333', anchor='mm')
+    
+    main_y = 50
+    draw.rectangle([30, main_y, width - 30, main_y + 90], fill='#E3F2FD', outline='#90CAF9')
+    draw.text((width // 2, main_y + 20), "정격 (월지 기준)", font=font_medium, fill='#666666', anchor='mm')
+    draw.text((width // 2, main_y + 50), 격국['정격'], font=get_font(18, bold=True), fill='#1565C0', anchor='mm')
+    draw.text((width // 2, main_y + 75), f"월지:{격국['월지']} 본기:{격국['월지_본기']} -> {격국['십성']}", 
+              font=font_small, fill='#666666', anchor='mm')
+    
+    special_y = main_y + 105
+    draw.rectangle([30, special_y, width - 30, special_y + 50], fill='#FFF3E0', outline='#FFE0B2')
+    draw.text((width // 2, special_y + 12), "특수격 가능성", font=font_medium, fill='#E65100', anchor='mm')
+    특수격_str = ', '.join(격국['특수격']) if 격국['특수격'] else '해당 없음'
+    draw.text((width // 2, special_y + 35), 특수격_str, font=font_header, fill='#333333', anchor='mm')
+    
+    desc_y = special_y + 65
+    격국_설명 = {
+        '정관격': '규율/명예 중시', '편관격 (칠살격)': '권력/리더십', '정재격': '안정적 재물',
+        '편재격': '사업적 재능', '식신격': '의식주 복', '상관격': '예술적 재능',
+        '정인격': '학문/교육', '편인격 (효신격)': '특수 학문', '비견격': '독립심', '겁재격': '경쟁심',
+    }
+    설명 = 격국_설명.get(격국['정격'], '특수한 구성')
+    draw.text((width // 2, desc_y), f"특성: {설명}", font=font_small, fill='#666666', anchor='mm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 공망표 이미지 생성
+# ============================================
+def create_공망표(사주_data, 기본정보, output_path="공망표.png"):
+    """공망 분석 이미지"""
+    
+    from saju_calculator import calc_공망_전체
+    
+    공망 = calc_공망_전체(사주_data)
+    
+    width = 600
+    height = 320
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(13, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 공망 분석", font=font_title, fill='#333333', anchor='mm')
+    
+    main_y = 50
+    draw.rectangle([30, main_y, width - 30, main_y + 70], fill='#F3E5F5', outline='#CE93D8')
+    일주_공망 = 공망['일']['공망']
+    draw.text((width // 2, main_y + 18), "일주 기준 공망 (가장 중요)", font=font_medium, fill='#7B1FA2', anchor='mm')
+    draw.text((width // 2, main_y + 45), f"{일주_공망[0]} / {일주_공망[1]}", 
+              font=get_font(20, bold=True), fill='#7B1FA2', anchor='mm')
+    
+    table_y = main_y + 85
+    col_width = 130
+    for i, (col, label) in enumerate([('년', '년주'), ('월', '월주'), ('일', '일주'), ('시', '시주')]):
+        x = 35 + i * col_width
+        공망_지지 = 공망[col]['공망']
+        draw.rectangle([x, table_y, x + col_width - 5, table_y + 50], fill='#FAFAFA', outline='#E0E0E0')
+        draw.text((x + (col_width-5) // 2, table_y + 13), label, font=font_header, fill='#333333', anchor='mm')
+        draw.text((x + (col_width-5) // 2, table_y + 35), f"{공망_지지[0]}/{공망_지지[1]}", 
+                  font=font_medium, fill='#7B1FA2', anchor='mm')
+    
+    해당_y = table_y + 65
+    draw.rectangle([30, 해당_y, width - 30, 해당_y + 45], fill='#FFF8E1', outline='#FFE082')
+    draw.text((width // 2, 해당_y + 12), "[ 원국 내 공망 해당 ]", font=font_header, fill='#E65100', anchor='mm')
+    공망_해당 = 공망.get('공망_해당', [])
+    if 공망_해당:
+        해당_str = ', '.join([f"{x['위치']}지({x['지지']})" for x in 공망_해당])
+        draw.text((width // 2, 해당_y + 32), f"해당: {해당_str}", font=font_medium, fill='#C62828', anchor='mm')
+    else:
+        draw.text((width // 2, 해당_y + 32), "공망 해당 없음", font=font_medium, fill='#4CAF50', anchor='mm')
+    
+    draw.text((30, 해당_y + 55), "* 공망: 해당 궁의 일이 허무하거나 늦게 이루어짐", font=font_small, fill='#666666', anchor='lm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 용신표 이미지 생성
+# ============================================
+def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
+    """용신 분석 이미지"""
+    
+    from saju_calculator import calc_용신
+    
+    용신 = calc_용신(사주_data)
+    
+    width = 600
+    height = 350
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(14, bold=True)
+    font_medium = get_font(12)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 용신 분석 (참고용)", font=font_title, fill='#333333', anchor='mm')
+    
+    status_y = 50
+    신강약_color = '#1565C0' if 용신['신강약'] == '신강' else '#F44336'
+    bg = '#E3F2FD' if 용신['신강약'] == '신강' else '#FFEBEE'
+    draw.rectangle([30, status_y, width - 30, status_y + 45], fill=bg, outline='#CCCCCC')
+    draw.text((width // 2, status_y + 15), "일간 강약", font=font_medium, fill='#666666', anchor='mm')
+    draw.text((width // 2, status_y + 33), f"{용신['신강약']} ({용신['신강점수']})", font=font_header, fill=신강약_color, anchor='mm')
+    
+    오행_색상 = {'목': '#4CAF50', '화': '#F44336', '토': '#795548', '금': '#FFC107', '수': '#2196F3'}
+    
+    box_y = status_y + 60
+    box_width = 170
+    box_height = 80
+    
+    항목들 = [('용신', 용신['용신'], '#4CAF50'), ('희신', 용신['희신'], '#2196F3'), ('기신', 용신['기신'], '#F44336')]
+    
+    for i, (이름, 오행, 색상) in enumerate(항목들):
+        x = 30 + i * (box_width + 10)
+        draw.rectangle([x, box_y, x + box_width, box_y + box_height], fill='#FAFAFA', outline='#E0E0E0')
+        draw.rectangle([x, box_y, x + box_width, box_y + 25], fill=색상, outline=색상)
+        draw.text((x + box_width // 2, box_y + 12), 이름, font=font_header, fill='#FFFFFF', anchor='mm')
+        draw.text((x + box_width // 2, box_y + 52), 오행, font=get_font(18, bold=True), fill=오행_색상.get(오행, '#333333'), anchor='mm')
+    
+    해석_y = box_y + box_height + 15
+    draw.rectangle([30, 해석_y, width - 30, 해석_y + 55], fill='#FFF8E1', outline='#FFE082')
+    draw.text((width // 2, 해석_y + 15), "[ 용신 활용법 ]", font=font_header, fill='#E65100', anchor='mm')
+    draw.text((width // 2, 해석_y + 38), f"용신({용신['용신']})을 강화하고 기신({용신['기신']})을 피하면 좋음", 
+              font=font_medium, fill='#333333', anchor='mm')
+    
+    draw.text((width // 2, 해석_y + 65), 용신['주의'], font=font_small, fill='#C62828', anchor='mm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 일진표 (달력) 이미지 생성
+# ============================================
+def create_일진표(year, month, output_path="일진표.png"):
+    """월별 일진 달력 이미지"""
+    
+    from saju_calculator import calc_일진표
+    import calendar
+    
+    일진_데이터 = calc_일진표(year, month)
+    
+    width = 750
+    height = 550
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(18)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(9)
+    font_tiny = get_font(8)
+    
+    draw.text((width // 2, 22), f"{year}년 {month}월 일진표", font=font_title, fill='#333333', anchor='mm')
+    draw.text((width // 2, 45), f"월주: {일진_데이터['월주']}", font=font_medium, fill='#1565C0', anchor='mm')
+    
+    요일 = ['일', '월', '화', '수', '목', '금', '토']
+    요일_색상 = ['#C62828', '#333333', '#333333', '#333333', '#333333', '#333333', '#1565C0']
+    
+    cell_width = 100
+    cell_height = 70
+    start_x = 30
+    start_y = 70
+    
+    for i, (요일명, 색상) in enumerate(zip(요일, 요일_색상)):
+        x = start_x + i * cell_width
+        draw.rectangle([x, start_y, x + cell_width, start_y + 22], fill='#F5F5F5', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, start_y + 11), 요일명, font=font_header, fill=색상, anchor='mm')
+    
+    cal = calendar.Calendar()
+    weeks = list(cal.monthdayscalendar(year, month))
+    
+    current_y = start_y + 22
+    
+    for week in weeks:
+        for day_idx, day in enumerate(week):
+            x = start_x + day_idx * cell_width
+            
+            if day == 0:
+                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height], fill='#FAFAFA', outline='#E0E0E0')
+            else:
+                bg_color = '#FFEBEE' if day_idx == 0 else '#E3F2FD' if day_idx == 6 else '#FFFFFF'
+                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height], fill=bg_color, outline='#E0E0E0')
+                
+                day_data = None
+                for d in 일진_데이터['days']:
+                    if d and d['day'] == day:
+                        day_data = d
+                        break
+                
+                if day_data:
+                    날짜_색상 = '#C62828' if day_idx == 0 else '#1565C0' if day_idx == 6 else '#333333'
+                    draw.text((x + 8, current_y + 12), str(day), font=font_header, fill=날짜_색상, anchor='lm')
+                    draw.text((x + cell_width // 2, current_y + 32), day_data['일진'], font=font_medium, fill='#333333', anchor='mm')
+                    draw.text((x + cell_width // 2, current_y + 48), f"{day_data['천간_한자']}{day_data['지지_한자']}", 
+                              font=font_small, fill='#999999', anchor='mm')
+                    draw.text((x + cell_width - 8, current_y + 12), day_data['음력'], font=font_tiny, fill='#999999', anchor='rm')
+        
+        current_y += cell_height
+    
+    img.save(output_path, 'PNG')
+    return output_path
+# ============================================
+def create_공망표(사주_data, 기본정보, output_path="공망표.png"):
+    """공망 분석 이미지"""
+    
+    from saju_calculator import calc_공망_전체
+    
+    공망 = calc_공망_전체(사주_data)
+    
+    width = 600
+    height = 380
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(13, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 공망 분석", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    # 일주 공망 (메인)
+    main_y = 55
+    draw.rectangle([30, main_y, width - 30, main_y + 80],
+                   fill='#F3E5F5', outline='#CE93D8')
+    
+    일주_공망 = 공망['일']['공망']
+    draw.text((width // 2, main_y + 20), "일주 기준 공망 (가장 중요)", 
+              font=font_medium, fill='#7B1FA2', anchor='mm')
+    draw.text((width // 2, main_y + 50), f"{일주_공망[0]} · {일주_공망[1]}", 
+              font=get_font(22, bold=True), fill='#7B1FA2', anchor='mm')
+    draw.text((width // 2, main_y + 72), f"({공망['일']['순']})", 
+              font=font_small, fill='#999999', anchor='mm')
+    
+    # 각 주별 공망
+    table_y = main_y + 95
+    col_width = 130
+    
+    for i, (col, label) in enumerate([('년', '년주'), ('월', '월주'), ('일', '일주'), ('시', '시주')]):
+        x = 35 + i * col_width
+        공망_지지 = 공망[col]['공망']
+        
+        draw.rectangle([x, table_y, x + col_width - 5, table_y + 60],
+                       fill='#FAFAFA', outline='#E0E0E0')
+        draw.text((x + (col_width - 5) // 2, table_y + 15), label, 
+                  font=font_header, fill='#333333', anchor='mm')
+        draw.text((x + (col_width - 5) // 2, table_y + 40), f"{공망_지지[0]} · {공망_지지[1]}", 
+                  font=font_medium, fill='#7B1FA2', anchor='mm')
+    
+    # 공망 해당 여부
+    해당_y = table_y + 75
+    draw.rectangle([30, 해당_y, width - 30, 해당_y + 60],
+                   fill='#FFF8E1', outline='#FFE082')
+    
+    draw.text((width // 2, 해당_y + 15), "[ 원국 내 공망 해당 ]", 
+              font=font_header, fill='#E65100', anchor='mm')
+    
+    공망_해당 = 공망.get('공망_해당', [])
+    if 공망_해당:
+        해당_str = ', '.join([f"{x['위치']}지({x['지지']})" for x in 공망_해당])
+        draw.text((width // 2, 해당_y + 40), f"해당: {해당_str}", 
+                  font=font_medium, fill='#C62828', anchor='mm')
+    else:
+        draw.text((width // 2, 해당_y + 40), "공망 해당 없음", 
+                  font=font_medium, fill='#4CAF50', anchor='mm')
+    
+    # 설명
+    desc_y = 해당_y + 75
+    draw.text((30, desc_y), "* 공망: 비어있는 기운. 해당 궁의 일이 허무하거나 늦게 이루어짐", 
+              font=font_small, fill='#666666', anchor='lm')
+    draw.text((30, desc_y + 18), "* 년지 공망: 조상덕 부족 | 월지 공망: 직장운 부침 | 시지 공망: 자녀운 약함", 
+              font=font_small, fill='#666666', anchor='lm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 용신표 이미지 생성
+# ============================================
+def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
+    """용신 분석 이미지"""
+    
+    from saju_calculator import calc_용신
+    
+    용신 = calc_용신(사주_data)
+    
+    width = 600
+    height = 400
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(16)
+    font_header = get_font(14, bold=True)
+    font_medium = get_font(12)
+    font_small = get_font(10)
+    
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 용신 분석 (참고용)", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    # 신강약
+    status_y = 55
+    신강약_color = '#1565C0' if 용신['신강약'] == '신강' else '#F44336'
+    draw.rectangle([30, status_y, width - 30, status_y + 50],
+                   fill='#E3F2FD' if 용신['신강약'] == '신강' else '#FFEBEE', 
+                   outline='#90CAF9' if 용신['신강약'] == '신강' else '#FFCDD2')
+    
+    draw.text((width // 2, status_y + 18), "일간 강약", 
+              font=font_medium, fill='#666666', anchor='mm')
+    draw.text((width // 2, status_y + 38), f"{용신['신강약']} ({용신['신강점수']})", 
+              font=font_header, fill=신강약_color, anchor='mm')
+    
+    # 용신/희신/기신
+    오행_색상 = {'목': '#4CAF50', '화': '#F44336', '토': '#795548', '금': '#FFC107', '수': '#2196F3'}
+    
+    box_y = status_y + 65
+    box_width = 170
+    box_height = 90
+    
+    항목들 = [
+        ('용신', 용신['용신'], 용신['용신_설명'], '#4CAF50'),
+        ('희신', 용신['희신'], 용신['희신_설명'], '#2196F3'),
+        ('기신', 용신['기신'], 용신['기신_설명'], '#F44336'),
+    ]
+    
+    for i, (이름, 오행, 설명, 색상) in enumerate(항목들):
+        x = 30 + i * (box_width + 10)
+        
+        draw.rectangle([x, box_y, x + box_width, box_y + box_height],
+                       fill='#FAFAFA', outline='#E0E0E0')
+        
+        # 헤더
+        draw.rectangle([x, box_y, x + box_width, box_y + 28],
+                       fill=색상, outline=색상)
+        draw.text((x + box_width // 2, box_y + 14), 이름, 
+                  font=font_header, fill='#FFFFFF', anchor='mm')
+        
+        # 오행
+        draw.text((x + box_width // 2, box_y + 50), 오행, 
+                  font=get_font(18, bold=True), fill=오행_색상.get(오행, '#333333'), anchor='mm')
+        
+        # 설명
+        draw.text((x + box_width // 2, box_y + 75), 설명, 
+                  font=font_small, fill='#666666', anchor='mm')
+    
+    # 해석
+    해석_y = box_y + box_height + 20
+    draw.rectangle([30, 해석_y, width - 30, 해석_y + 70],
+                   fill='#FFF8E1', outline='#FFE082')
+    
+    draw.text((width // 2, 해석_y + 15), "[ 용신 활용법 ]", 
+              font=font_header, fill='#E65100', anchor='mm')
+    draw.text((width // 2, 해석_y + 38), f"용신({용신['용신']})을 강화하고, 기신({용신['기신']})을 피하면 좋음", 
+              font=font_medium, fill='#333333', anchor='mm')
+    draw.text((width // 2, 해석_y + 55), f"색상/방향/직업 등에서 {용신['용신']} 기운 활용 권장", 
+              font=font_small, fill='#666666', anchor='mm')
+    
+    # 주의사항
+    warn_y = 해석_y + 85
+    draw.text((width // 2, warn_y), 용신['주의'], 
+              font=font_small, fill='#C62828', anchor='mm')
+    
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 일진표 (달력) 이미지 생성
+# ============================================
+def create_일진표(year, month, output_path="일진표.png"):
+    """월별 일진 달력 이미지"""
+    
+    from saju_calculator import calc_일진표
+    import calendar
+    
+    일진_데이터 = calc_일진표(year, month)
+    
+    width = 750
+    height = 580
+    
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    font_title = get_font(18)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(11)
+    font_small = get_font(9)
+    font_tiny = get_font(8)
+    
+    # 제목
+    draw.text((width // 2, 25), f"{year}년 {month}월 일진표", 
+              font=font_title, fill='#333333', anchor='mm')
+    draw.text((width // 2, 48), f"월주: {일진_데이터['월주']}", 
+              font=font_medium, fill='#1565C0', anchor='mm')
+    
+    # 요일 헤더
+    요일 = ['일', '월', '화', '수', '목', '금', '토']
+    요일_색상 = ['#C62828', '#333333', '#333333', '#333333', '#333333', '#333333', '#1565C0']
+    
+    cell_width = 100
+    cell_height = 75
+    start_x = 30
+    start_y = 75
+    
+    for i, (요일명, 색상) in enumerate(zip(요일, 요일_색상)):
+        x = start_x + i * cell_width
+        draw.rectangle([x, start_y, x + cell_width, start_y + 25],
+                       fill='#F5F5F5', outline='#E0E0E0')
+        draw.text((x + cell_width // 2, start_y + 12), 요일명, 
+                  font=font_header, fill=색상, anchor='mm')
+    
+    # 달력 그리기
+    cal = calendar.Calendar()
+    weeks = list(cal.monthdayscalendar(year, month))
+    
+    current_y = start_y + 25
+    
+    for week_idx, week in enumerate(weeks):
+        for day_idx, day in enumerate(week):
+            x = start_x + day_idx * cell_width
+            
+            # 셀 배경
+            if day == 0:
+                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height],
+                               fill='#FAFAFA', outline='#E0E0E0')
+            else:
+                # 주말 색상
+                if day_idx == 0:  # 일요일
+                    bg_color = '#FFEBEE'
+                elif day_idx == 6:  # 토요일
+                    bg_color = '#E3F2FD'
+                else:
+                    bg_color = '#FFFFFF'
+                
+                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height],
+                               fill=bg_color, outline='#E0E0E0')
+                
+                # 날짜 찾기
+                day_data = None
+                for d in 일진_데이터['days']:
+                    if d and d['day'] == day:
+                        day_data = d
+                        break
+                
+                if day_data:
+                    # 날짜
+                    날짜_색상 = '#C62828' if day_idx == 0 else '#1565C0' if day_idx == 6 else '#333333'
+                    draw.text((x + 8, current_y + 12), str(day), 
+                              font=font_header, fill=날짜_색상, anchor='lm')
+                    
+                    # 일진
+                    draw.text((x + cell_width // 2, current_y + 35), day_data['일진'], 
+                              font=font_medium, fill='#333333', anchor='mm')
+                    
+                    # 한자
+                    draw.text((x + cell_width // 2, current_y + 52), 
+                              f"{day_data['천간_한자']}{day_data['지지_한자']}", 
+                              font=font_small, fill='#999999', anchor='mm')
+                    
+                    # 음력
+                    draw.text((x + cell_width - 8, current_y + 12), day_data['음력'], 
+                              font=font_tiny, fill='#999999', anchor='rm')
+        
+        current_y += cell_height
+    
+    img.save(output_path, 'PNG')
+    return output_path

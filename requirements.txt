@@ -3,3 +3,4 @@ pillow
 pandas
 openpyxl
 korean-lunar-calendar
+korean-lunar-calendar
