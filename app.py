@@ -52,7 +52,12 @@ with tab1:
     with col1:
         이름 = st.text_input("이름", placeholder="홍길동")
         성별 = st.radio("성별", ["남성", "여성"], horizontal=True)
-        생년월일 = st.date_input("생년월일", datetime(1990, 1, 1))
+        생년월일 = st.date_input(
+            "생년월일", 
+            datetime(1990, 1, 1),
+            min_value=datetime(1900, 1, 1),
+            max_value=datetime(2030, 12, 31)
+        )
     
     with col2:
         시간_col1, 시간_col2 = st.columns(2)
