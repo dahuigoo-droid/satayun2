@@ -433,7 +433,7 @@ with tab1:
                 create_용신표(사주, 기본정보, 용신_output_path)
                 
                 st.subheader("💎 용신표")
-                st.image(용신_output_path, caption=f"{이름}님 용신표 (참고용)")
+                st.image(용신_output_path, caption=f"{이름}님 용신표")
                 
                 with open(용신_output_path, "rb") as f:
                     st.download_button(

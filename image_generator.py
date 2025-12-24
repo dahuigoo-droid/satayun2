@@ -2287,54 +2287,110 @@ def create_공망표(사주_data, 기본정보, output_path="공망표.png"):
 # 용신표 이미지 생성
 # ============================================
 def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
-    """용신 분석 이미지"""
+    """용신 분석 이미지 - 조후/억부/통관 + 용신/희신/한신/기신/구신"""
     
     from saju_calculator import calc_용신
     
     용신 = calc_용신(사주_data)
     
     width = 600
-    height = 290
+    height = 420
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
     
     font_title = get_font(16)
-    font_header = get_font(14, bold=True)
-    font_medium = get_font(12)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(11)
     font_small = get_font(10)
-    
-    draw.text((width // 2, 20), f"{기본정보['이름']}님 용신 분석 (참고용)", font=font_title, fill='#333333', anchor='mm')
-    
-    status_y = 50
-    신강약_color = '#1565C0' if 용신['신강약'] == '신강' else '#F44336'
-    bg = '#E3F2FD' if 용신['신강약'] == '신강' else '#FFEBEE'
-    draw.rectangle([30, status_y, width - 30, status_y + 45], fill=bg, outline='#CCCCCC')
-    draw.text((width // 2, status_y + 15), "일간 강약", font=font_medium, fill='#666666', anchor='mm')
-    draw.text((width // 2, status_y + 33), f"{용신['신강약']} ({용신['신강점수']})", font=font_header, fill=신강약_color, anchor='mm')
+    font_tiny = get_font(9)
     
     오행_색상 = {'목': '#4CAF50', '화': '#F44336', '토': '#795548', '금': '#FFC107', '수': '#2196F3'}
     
-    box_y = status_y + 60
-    box_width = 170
-    box_height = 80
+    # 제목
+    draw.text((width // 2, 18), f"{기본정보['이름']}님 용신 분석", font=font_title, fill='#333333', anchor='mm')
     
-    항목들 = [('용신', 용신['용신'], '#4CAF50'), ('희신', 용신['희신'], '#2196F3'), ('기신', 용신['기신'], '#F44336')]
+    # ========== 오행 분포 + 신강약 ==========
+    info_y = 40
+    draw.rectangle([20, info_y, width - 20, info_y + 50], fill='#F5F5F5', outline='#E0E0E0')
     
-    for i, (이름, 오행, 색상) in enumerate(항목들):
-        x = 30 + i * (box_width + 10)
-        draw.rectangle([x, box_y, x + box_width, box_y + box_height], fill='#FAFAFA', outline='#E0E0E0')
-        draw.rectangle([x, box_y, x + box_width, box_y + 25], fill=색상, outline=색상)
-        draw.text((x + box_width // 2, box_y + 12), 이름, font=font_header, fill='#FFFFFF', anchor='mm')
-        draw.text((x + box_width // 2, box_y + 52), 오행, font=get_font(18, bold=True), fill=오행_색상.get(오행, '#333333'), anchor='mm')
+    오행_분포 = 용신['오행_분포']
+    분포_str = "  ".join([f"{오행}:{count}" for 오행, count in 오행_분포.items()])
+    draw.text((30, info_y + 13), f"오행 분포: {분포_str}", font=font_small, fill='#666666', anchor='lm')
     
-    해석_y = box_y + box_height + 15
-    draw.rectangle([30, 해석_y, width - 30, 해석_y + 55], fill='#FFF8E1', outline='#FFE082')
-    draw.text((width // 2, 해석_y + 15), "[ 용신 활용법 ]", font=font_header, fill='#E65100', anchor='mm')
-    draw.text((width // 2, 해석_y + 38), f"용신({용신['용신']})을 강화하고 기신({용신['기신']})을 피하면 좋음", 
-              font=font_medium, fill='#333333', anchor='mm')
+    신강약_color = '#1565C0' if 용신['신강약'] == '신강' else '#F44336' if 용신['신강약'] == '신약' else '#FF9800'
+    draw.text((30, info_y + 35), f"일간: {용신['일간']}({용신['일간_오행']})  |  ", font=font_small, fill='#333333', anchor='lm')
+    draw.text((165, info_y + 35), f"{용신['신강약']} ({용신['신강점수']})", font=font_header, fill=신강약_color, anchor='lm')
+    draw.text((270, info_y + 35), f"|  월지: {용신['월지']}({용신['계절']})", font=font_small, fill='#333333', anchor='lm')
     
-    draw.text((width // 2, 해석_y + 65), 용신['주의'], font=font_small, fill='#C62828', anchor='mm')
+    # ========== 3가지 관점 ==========
+    section_y = info_y + 62
+    section_height = 70
+    section_width = 180
+    gap = 10
+    start_x = 20
+    
+    관점들 = [
+        ('조후용신', 용신['조후_용신'], 용신['조후_설명'], '#FFEBEE', '#C62828'),
+        ('억부용신', 용신['억부_용신'], 용신['억부_설명'], '#E3F2FD', '#1565C0'),
+        ('통관용신', 용신['통관_용신'] or '-', 용신['통관_설명'], '#F3E5F5', '#7B1FA2'),
+    ]
+    
+    for i, (이름, 오행, 설명, bg_color, header_color) in enumerate(관점들):
+        x = start_x + i * (section_width + gap)
+        
+        draw.rectangle([x, section_y, x + section_width, section_y + section_height], fill=bg_color, outline='#E0E0E0')
+        draw.rectangle([x, section_y, x + section_width, section_y + 20], fill=header_color, outline=header_color)
+        draw.text((x + section_width // 2, section_y + 10), 이름, font=font_header, fill='#FFFFFF', anchor='mm')
+        
+        if 오행 != '-':
+            draw.text((x + section_width // 2, section_y + 38), 오행, font=get_font(18, bold=True), fill=오행_색상.get(오행, '#333333'), anchor='mm')
+        else:
+            draw.text((x + section_width // 2, section_y + 38), "해당없음", font=font_medium, fill='#999999', anchor='mm')
+        
+        설명_short = 설명[:20] + "..." if len(설명) > 20 else 설명
+        draw.text((x + section_width // 2, section_y + 58), 설명_short, font=font_tiny, fill='#666666', anchor='mm')
+    
+    # ========== 최종 구조 요약 ==========
+    result_y = section_y + section_height + 15
+    draw.rectangle([20, result_y, width - 20, result_y + 28], fill='#333333', outline='#333333')
+    draw.text((width // 2, result_y + 14), "[ 최종 구조 요약 ]", font=font_header, fill='#FFFFFF', anchor='mm')
+    
+    # 5개 박스 (등급 + 오행만)
+    box_y = result_y + 38
+    box_width = 105
+    box_height = 70
+    gap = 8
+    
+    항목들 = [
+        ('⭐ 용신', 용신['용신'], '#C62828', '#FFEBEE'),
+        ('💧 희신', 용신['희신'], '#1565C0', '#E3F2FD'),
+        ('△ 한신', 용신['한신'], '#757575', '#F5F5F5'),
+        ('⚠ 기신', 용신['기신'], '#E65100', '#FFF3E0'),
+        ('✕ 구신', 용신['구신'], '#C62828', '#FFCDD2'),
+    ]
+    
+    for i, (등급, 오행, text_color, bg_color) in enumerate(항목들):
+        x = 20 + i * (box_width + gap)
+        
+        draw.rectangle([x, box_y, x + box_width, box_y + box_height], fill=bg_color, outline='#E0E0E0')
+        draw.text((x + box_width // 2, box_y + 18), 등급, font=font_header, fill=text_color, anchor='mm')
+        
+        if 오행:
+            draw.text((x + box_width // 2, box_y + 48), 오행, font=get_font(22, bold=True), fill=오행_색상.get(오행, '#333333'), anchor='mm')
+        else:
+            draw.text((x + box_width // 2, box_y + 48), "-", font=font_medium, fill='#CCCCCC', anchor='mm')
+    
+    # ========== 최종 순환 구조 ==========
+    final_y = box_y + box_height + 12
+    draw.rectangle([20, final_y, width - 20, final_y + 38], fill='#E8F5E9', outline='#81C784')
+    draw.text((width // 2, final_y + 12), "📌 최종 순환 구조", font=font_header, fill='#2E7D32', anchor='mm')
+    
+    용신_오행 = 용신['용신']
+    희신_오행 = 용신['희신'] or '-'
+    한신_오행 = 용신['한신'] or '-'
+    구조_str = f"{용신_오행} → {희신_오행} → {한신_오행} → {용신_오행}"
+    draw.text((width // 2, final_y + 28), 구조_str, font=font_medium, fill='#333333', anchor='mm')
     
     img.save(output_path, 'PNG')
     return output_path
