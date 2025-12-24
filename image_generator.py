@@ -3,6 +3,21 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 # ============================================
+# 지지 이모지 및 동물 이름 매핑
+# ============================================
+지지_이모지 = {
+    '자': '🐀', '축': '🐂', '인': '🐅', '묘': '🐇',
+    '진': '🐉', '사': '🐍', '오': '🐴', '미': '🐏',
+    '신': '🐒', '유': '🐓', '술': '🐕', '해': '🐖',
+}
+
+지지_동물 = {
+    '자': '쥐', '축': '소', '인': '호랑이', '묘': '토끼',
+    '진': '용', '사': '뱀', '오': '말', '미': '양',
+    '신': '원숭이', '유': '닭', '술': '개', '해': '돼지',
+}
+
+# ============================================
 # 폰트 설정
 # ============================================
 def get_font(size, bold=False):
@@ -21,6 +36,23 @@ def get_font(size, bold=False):
             return ImageFont.truetype(path, size)
     
     return ImageFont.load_default()
+
+def get_emoji_font(size):
+    """이모지 폰트 로드"""
+    emoji_paths = [
+        "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+        "/usr/share/fonts/truetype/ancient-scripts/Symbola_hint.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    
+    for path in emoji_paths:
+        if os.path.exists(path):
+            try:
+                return ImageFont.truetype(path, size)
+            except:
+                continue
+    
+    return None
 
 # ============================================
 # 색상 정의 (오행별)
@@ -87,17 +119,18 @@ def get_font(size, bold=False):
 # ============================================
 # 원국표 이미지 생성
 # ============================================
-def create_원국표(사주_data, 기본정보, output_path="원국표.png"):
+def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신살_data=None):
     """
     원국표 이미지 생성
     
     사주_data: calc_사주() 결과
     기본정보: {'이름': ..., '성별': ..., '나이': ..., '양력': ..., '음력': ...}
+    신살_data: calc_신살() 결과 (optional)
     """
     
-    # 이미지 크기
+    # 이미지 크기 (신살 있으면 높이 증가)
     width = 600
-    height = 500
+    height = 560 if 신살_data else 500
     
     # 이미지 생성
     img = Image.new('RGB', (width, height), '#FFFFFF')
@@ -108,6 +141,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png"):
     font_large = get_font(36, bold=True)
     font_medium = get_font(14)
     font_small = get_font(12)
+    font_tiny = get_font(9)
     
     # ========== 상단 기본정보 ==========
     y_start = 20
@@ -204,6 +238,9 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png"):
     draw.text((label_width // 2, current_y + cell_height_main // 2), "지지", 
               font=font_medium, fill='#666666', anchor='mm')
     
+    # 이모지 폰트 로드 시도
+    emoji_font = get_emoji_font(20)
+    
     for i, col in enumerate(columns):
         x = label_width + i * cell_width
         
@@ -223,11 +260,16 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png"):
         draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_main],
                        fill=bg_color, outline='#E0E0E0')
         
-        # 지지(한자) + 오행
+        # 지지(한자)
         한자 = 지지_한자[지지]
         display_text = f"{지지}({한자})"
-        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10), 
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 15), 
                   display_text, font=font_large, fill=text_color, anchor='mm')
+        
+        # 동물 이름 표시 (이모지 대신)
+        동물 = 지지_동물[지지]
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 + 15), 
+                  동물, font=font_small, fill=text_color, anchor='mm')
         
         # 오행 표시
         오행_text = f"{오행}"
@@ -298,8 +340,56 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png"):
         draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
                   신살, font=font_small, fill='#888888', anchor='mm')
     
+    current_y += cell_height_sub
+    
+    # ========== 신살 행 (옵션) ==========
+    if 신살_data:
+        cell_height_sinsal = 45
+        
+        # 천간 신살 행
+        draw.rectangle([0, current_y, label_width, current_y + cell_height_sub],
+                       fill='#FFF9E6', outline='#E0E0E0')
+        draw.text((label_width // 2, current_y + cell_height_sub // 2), "천간신살", 
+                  font=font_small, fill='#666666', anchor='mm')
+        
+        for i, col in enumerate(columns):
+            x = label_width + i * cell_width
+            draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sub],
+                           fill='#FFFDF5', outline='#E0E0E0')
+            신살_list = 신살_data['천간신살'][col]
+            if 신살_list:
+                신살_text = '\n'.join(신살_list[:2])  # 최대 2개만
+                draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
+                          신살_text, font=font_tiny, fill='#996600', anchor='mm')
+            else:
+                draw.text((x + cell_width // 2, current_y + cell_height_sub // 2), 
+                          '×', font=font_small, fill='#CCCCCC', anchor='mm')
+        
+        current_y += cell_height_sub
+        
+        # 지지 신살 행
+        draw.rectangle([0, current_y, label_width, current_y + cell_height_sinsal],
+                       fill='#F0F9FF', outline='#E0E0E0')
+        draw.text((label_width // 2, current_y + cell_height_sinsal // 2), "지지신살", 
+                  font=font_small, fill='#666666', anchor='mm')
+        
+        for i, col in enumerate(columns):
+            x = label_width + i * cell_width
+            draw.rectangle([x, current_y, x + cell_width, current_y + cell_height_sinsal],
+                           fill='#F8FCFF', outline='#E0E0E0')
+            신살_list = 신살_data['지지신살'][col]
+            if 신살_list:
+                신살_text = '\n'.join(신살_list[:3])  # 최대 3개만
+                draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), 
+                          신살_text, font=font_tiny, fill='#006699', anchor='mm')
+            else:
+                draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), 
+                          '×', font=font_small, fill='#CCCCCC', anchor='mm')
+        
+        current_y += cell_height_sinsal
+    
     # ========== 오행 분포 ==========
-    current_y += cell_height_sub + 20
+    current_y += 20
     오행_text = f"목 {사주_data['오행']['목']}, 화 {사주_data['오행']['화']}, 토 {사주_data['오행']['토']}, 금 {사주_data['오행']['금']}, 수 {사주_data['오행']['수']}"
     draw.text((width // 2, current_y), 오행_text, font=font_medium, fill='#666666', anchor='mm')
     
@@ -994,8 +1084,8 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
     width = 700
     height = 380
     
-    # 이미지 생성
-    img = Image.new('RGB', (width, height), '#2D2D2D')
+    # 이미지 생성 (라이트 테마)
+    img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
     
     # 폰트
@@ -1007,9 +1097,9 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
     # ========== 상단 제목 ==========
     y_start = 15
     draw.text((width // 2, y_start), f"{기본정보['이름']}님 십성 분석표", 
-              font=font_title, fill='#FFFFFF', anchor='mm')
+              font=font_title, fill='#333333', anchor='mm')
     draw.text((width // 2, y_start + 22), f"(일간: {일간} / {일간_오행})", 
-              font=font_small, fill='#AAAAAA', anchor='mm')
+              font=font_small, fill='#666666', anchor='mm')
     
     # ========== 테이블 ==========
     table_y = 55
@@ -1023,9 +1113,9 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
     x = 20
     for i, header in enumerate(headers):
         draw.rectangle([x, table_y, x + col_widths[i], table_y + 30],
-                       fill='#444444', outline='#555555')
+                       fill='#E8E8E8', outline='#CCCCCC')
         draw.text((x + col_widths[i] // 2, table_y + 15), header,
-                  font=font_header, fill='#FFFFFF', anchor='mm')
+                  font=font_header, fill='#333333', anchor='mm')
         x += col_widths[i]
     
     # 데이터 행
@@ -1043,22 +1133,22 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
             # 분류 (첫 행만)
             if idx == 0:
                 draw.rectangle([x, current_y, x + col_widths[0], current_y + row_height * 2],
-                               fill='#3D3D3D', outline='#555555')
+                               fill='#F5F5F5', outline='#CCCCCC')
                 draw.text((x + col_widths[0] // 2, current_y + row_height),
-                          분류명, font=font_medium, fill='#FFFFFF', anchor='mm')
+                          분류명, font=font_medium, fill='#333333', anchor='mm')
             x += col_widths[0]
             
             # 십성
             draw.rectangle([x, current_y, x + col_widths[1], current_y + row_height],
-                           fill=분류_color, outline='#555555')
+                           fill=분류_color, outline='#CCCCCC')
             draw.text((x + col_widths[1] // 2, current_y + row_height // 2),
                       십성명, font=font_medium, fill='#333333', anchor='mm')
             x += col_widths[1]
             
             # 음양
-            음양_color = '#FFCCCC' if 음양 == '양' else '#CCE5FF'
+            음양_color = '#FFEBEE' if 음양 == '양' else '#E3F2FD'
             draw.rectangle([x, current_y, x + col_widths[2], current_y + row_height],
-                           fill=음양_color, outline='#555555')
+                           fill=음양_color, outline='#CCCCCC')
             draw.text((x + col_widths[2] // 2, current_y + row_height // 2),
                       음양, font=font_medium, fill='#333333', anchor='mm')
             x += col_widths[2]
@@ -1068,7 +1158,7 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
             오행_bg = 오행_색상[오행]['천간_bg']
             오행_text = 오행_색상[오행]['text']
             draw.rectangle([x, current_y, x + col_widths[3], current_y + row_height],
-                           fill=오행_bg, outline='#555555')
+                           fill=오행_bg, outline='#CCCCCC')
             draw.text((x + col_widths[3] // 2, current_y + row_height // 2),
                       오행, font=font_medium, fill=오행_text, anchor='mm')
             x += col_widths[3]
@@ -1076,25 +1166,25 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
             # 개수
             count = 십성_count[십성명]
             draw.rectangle([x, current_y, x + col_widths[4], current_y + row_height],
-                           fill='#3D3D3D', outline='#555555')
-            count_color = '#FF6B6B' if count >= 3 else '#FFFFFF' if count > 0 else '#666666'
+                           fill='#F5F5F5', outline='#CCCCCC')
+            count_color = '#C62828' if count >= 3 else '#333333' if count > 0 else '#BDBDBD'
             draw.text((x + col_widths[4] // 2, current_y + row_height // 2),
                       f"{count}개", font=font_medium, fill=count_color, anchor='mm')
             x += col_widths[4]
             
             # 강도
             강도 = get_강도(count)
-            강도_color = '#3D3D3D'
+            강도_color = '#F5F5F5'
             if 강도 == '매우 강함':
-                강도_color = '#5C3D3D'
+                강도_color = '#FFEBEE'
             elif 강도 == '강함':
-                강도_color = '#4D4D3D'
+                강도_color = '#FFF3E0'
             elif 강도 == '없음':
-                강도_color = '#3D3D4D'
+                강도_color = '#FAFAFA'
             
             draw.rectangle([x, current_y, x + col_widths[5], current_y + row_height],
-                           fill=강도_color, outline='#555555')
-            강도_text_color = '#FF6B6B' if 강도 in ['강함', '매우 강함'] else '#AAAAAA' if 강도 == '없음' else '#FFFFFF'
+                           fill=강도_color, outline='#CCCCCC')
+            강도_text_color = '#C62828' if 강도 in ['강함', '매우 강함'] else '#BDBDBD' if 강도 == '없음' else '#333333'
             draw.text((x + col_widths[5] // 2, current_y + row_height // 2),
                       강도, font=font_medium, fill=강도_text_color, anchor='mm')
             
@@ -1145,8 +1235,8 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
     width = 550
     height = 550
     
-    # 이미지 생성 (다크 테마)
-    img = Image.new('RGB', (width, height), '#1E1E1E')
+    # 이미지 생성 (라이트 테마)
+    img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
     
     # 폰트
@@ -1157,11 +1247,11 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
     
     # ========== 상단 제목 ==========
     draw.text((width // 2, 25), f"나의 오행: {일간}({일간_오행})", 
-              font=font_title, fill='#FFFFFF', anchor='mm')
+              font=font_title, fill='#333333', anchor='mm')
     
     # 범례
-    draw.text((50, 55), "→ 상생(生)", font=font_small, fill='#4A90D9', anchor='lm')
-    draw.text((150, 55), "→ 상극(剋)", font=font_small, fill='#D94A4A', anchor='lm')
+    draw.text((50, 55), "→ 상생(生)", font=font_small, fill='#1565C0', anchor='lm')
+    draw.text((150, 55), "→ 상극(剋)", font=font_small, fill='#C62828', anchor='lm')
     
     # ========== 오행 원형 배치 ==========
     center_x, center_y = width // 2, height // 2 + 20
@@ -1194,7 +1284,7 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
         end_y = y2 - (circle_radius + 15) * math.sin(angle)
         
         # 화살표 선
-        draw.line([(start_x, start_y), (end_x, end_y)], fill='#D94A4A', width=2)
+        draw.line([(start_x, start_y), (end_x, end_y)], fill='#C62828', width=2)
         
         # 화살표 머리
         arrow_size = 8
@@ -1204,7 +1294,7 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
             (end_x, end_y),
             (end_x + arrow_size * math.cos(angle1), end_y + arrow_size * math.sin(angle1)),
             (end_x + arrow_size * math.cos(angle2), end_y + arrow_size * math.sin(angle2))
-        ], fill='#D94A4A')
+        ], fill='#C62828')
     
     # ========== 상생 화살표 (외곽 곡선) ==========
     상생_관계 = [('목', '화'), ('화', '토'), ('토', '금'), ('금', '수'), ('수', '목')]
@@ -1243,7 +1333,7 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
             points.append((px, py))
         
         for j in range(len(points) - 1):
-            draw.line([points[j], points[j+1]], fill='#4A90D9', width=2)
+            draw.line([points[j], points[j+1]], fill='#1565C0', width=2)
         
         # 화살표 머리
         arrow_size = 8
@@ -1254,7 +1344,7 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
             (end_x, end_y),
             (end_x + arrow_size * math.cos(angle1), end_y + arrow_size * math.sin(angle1)),
             (end_x + arrow_size * math.cos(angle2), end_y + arrow_size * math.sin(angle2))
-        ], fill='#4A90D9')
+        ], fill='#1565C0')
     
     # ========== 오행 원 그리기 ==========
     오행_원색 = {
@@ -1274,13 +1364,13 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
         is_일간 = (오행명 == 일간_오행)
         
         # 외곽 원
-        outline_color = '#FFFFFF' if is_일간 else '#555555'
+        outline_color = '#333333' if is_일간 else '#CCCCCC'
         outline_width = 3 if is_일간 else 1
         
-        # 원 배경 (연한색)
+        # 원 배경 (라이트 테마)
         draw.ellipse([x - circle_radius, y - circle_radius, 
                       x + circle_radius, y + circle_radius],
-                     fill='#2D2D2D', outline=outline_color, width=outline_width)
+                     fill='#F5F5F5', outline=outline_color, width=outline_width)
         
         # 채우기 효과 (아래에서 위로 퍼센트만큼)
         fill_height = int(circle_radius * 2 * percent / 100)
@@ -1298,10 +1388,10 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
         
         # 오행명 + 십성
         draw.text((x, y - 12), f"{오행명}({십성})", 
-                  font=font_medium, fill='#FFFFFF', anchor='mm')
+                  font=font_medium, fill='#333333', anchor='mm')
         
         # 퍼센트
-        percent_color = '#FFFFFF' if percent > 0 else '#666666'
+        percent_color = '#333333' if percent > 0 else '#BDBDBD'
         draw.text((x, y + 12), f"{percent}%", 
                   font=font_large, fill=percent_color, anchor='mm')
     
@@ -1336,21 +1426,189 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
     bar_height = 25
     bar_x = (width - bar_width) // 2
     
-    # 배경
+    # 배경 (라이트 테마)
     draw.rectangle([bar_x, bar_y, bar_x + bar_width, bar_y + bar_height],
-                   fill='#3D3D3D', outline='#555555')
+                   fill='#E0E0E0', outline='#CCCCCC')
     
     # 양 (왼쪽, 밝은색)
     양_width = int(bar_width * 양_비율 / 100)
     if 양_width > 0:
         draw.rectangle([bar_x, bar_y, bar_x + 양_width, bar_y + bar_height],
-                       fill='#F5F5F5')
+                       fill='#FFCCCC')
     
     # 텍스트
     draw.text((bar_x - 10, bar_y + bar_height // 2), f"양 {양_비율}%", 
-              font=font_small, fill='#F5F5F5', anchor='rm')
+              font=font_small, fill='#C62828', anchor='rm')
     draw.text((bar_x + bar_width + 10, bar_y + bar_height // 2), f"음 {음_비율}%", 
-              font=font_small, fill='#A5D6A7', anchor='lm')
+              font=font_small, fill='#1565C0', anchor='lm')
+    
+    # 저장
+    img.save(output_path, 'PNG')
+    return output_path
+
+
+# ============================================
+# 신살표 이미지 생성
+# ============================================
+def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
+    """
+    신살 분석표 이미지 생성 (길신/흉신 분리) - 라이트 테마
+    """
+    
+    길신 = 신살_data['길신']
+    흉신 = 신살_data['흉신']
+    특수신살 = 신살_data['특수신살']
+    
+    # 이미지 크기
+    width = 650
+    height = 450
+    
+    # 이미지 생성 (라이트 테마)
+    img = Image.new('RGB', (width, height), '#FFFFFF')
+    draw = ImageDraw.Draw(img)
+    
+    # 폰트
+    font_title = get_font(18)
+    font_header = get_font(14, bold=True)
+    font_medium = get_font(12)
+    font_small = get_font(11)
+    
+    # ========== 상단 제목 ==========
+    y_start = 20
+    draw.text((width // 2, y_start), f"{기본정보['이름']}님 신살 분석표", 
+              font=font_title, fill='#333333', anchor='mm')
+    
+    # ========== 3열 레이아웃 ==========
+    col_width = 200
+    col_gap = 15
+    start_x = 20
+    table_y = 60
+    
+    # ========== 길신 열 ==========
+    col1_x = start_x
+    
+    # 헤더 (파스텔 블루)
+    draw.rectangle([col1_x, table_y, col1_x + col_width, table_y + 35],
+                   fill='#E3F2FD', outline='#90CAF9')
+    draw.text((col1_x + col_width // 2, table_y + 17), "⭐ 길신", 
+              font=font_header, fill='#1565C0', anchor='mm')
+    
+    # 길신 목록
+    row_height = 28
+    current_y = table_y + 35
+    
+    if 길신:
+        for 신살명, 위치 in 길신:
+            draw.rectangle([col1_x, current_y, col1_x + col_width, current_y + row_height],
+                           fill='#F5F5F5', outline='#E0E0E0')
+            draw.text((col1_x + 10, current_y + row_height // 2), 
+                      f"{신살명}", font=font_medium, fill='#1565C0', anchor='lm')
+            draw.text((col1_x + col_width - 10, current_y + row_height // 2), 
+                      f"({위치})", font=font_small, fill='#42A5F5', anchor='rm')
+            current_y += row_height
+    else:
+        draw.rectangle([col1_x, current_y, col1_x + col_width, current_y + row_height],
+                       fill='#F5F5F5', outline='#E0E0E0')
+        draw.text((col1_x + col_width // 2, current_y + row_height // 2), 
+                  "없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+        current_y += row_height
+    
+    # 길신 개수
+    current_y += 5
+    draw.text((col1_x + col_width // 2, current_y + 10), 
+              f"총 {len(길신)}개", font=font_small, fill='#1565C0', anchor='mm')
+    
+    # ========== 흉신 열 ==========
+    col2_x = start_x + col_width + col_gap
+    
+    # 헤더 (파스텔 핑크)
+    draw.rectangle([col2_x, table_y, col2_x + col_width, table_y + 35],
+                   fill='#FFEBEE', outline='#FFCDD2')
+    draw.text((col2_x + col_width // 2, table_y + 17), "⚠️ 흉신", 
+              font=font_header, fill='#C62828', anchor='mm')
+    
+    # 흉신 목록
+    current_y = table_y + 35
+    
+    if 흉신:
+        for 신살명, 위치 in 흉신:
+            draw.rectangle([col2_x, current_y, col2_x + col_width, current_y + row_height],
+                           fill='#F5F5F5', outline='#E0E0E0')
+            draw.text((col2_x + 10, current_y + row_height // 2), 
+                      f"{신살명}", font=font_medium, fill='#C62828', anchor='lm')
+            draw.text((col2_x + col_width - 10, current_y + row_height // 2), 
+                      f"({위치})", font=font_small, fill='#E57373', anchor='rm')
+            current_y += row_height
+    else:
+        draw.rectangle([col2_x, current_y, col2_x + col_width, current_y + row_height],
+                       fill='#F5F5F5', outline='#E0E0E0')
+        draw.text((col2_x + col_width // 2, current_y + row_height // 2), 
+                  "없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+        current_y += row_height
+    
+    # 흉신 개수
+    current_y_흉신 = table_y + 35 + row_height * max(len(흉신), 1) + 5
+    draw.text((col2_x + col_width // 2, current_y_흉신 + 10), 
+              f"총 {len(흉신)}개", font=font_small, fill='#C62828', anchor='mm')
+    
+    # ========== 특수신살 열 ==========
+    col3_x = start_x + (col_width + col_gap) * 2
+    
+    # 헤더 (파스텔 퍼플)
+    draw.rectangle([col3_x, table_y, col3_x + col_width, table_y + 35],
+                   fill='#F3E5F5', outline='#E1BEE7')
+    draw.text((col3_x + col_width // 2, table_y + 17), "🔮 특수신살", 
+              font=font_header, fill='#7B1FA2', anchor='mm')
+    
+    # 특수신살 목록
+    current_y = table_y + 35
+    
+    if 특수신살:
+        for 신살명, 위치 in 특수신살:
+            draw.rectangle([col3_x, current_y, col3_x + col_width, current_y + row_height],
+                           fill='#F5F5F5', outline='#E0E0E0')
+            draw.text((col3_x + 10, current_y + row_height // 2), 
+                      f"{신살명}", font=font_medium, fill='#7B1FA2', anchor='lm')
+            draw.text((col3_x + col_width - 10, current_y + row_height // 2), 
+                      f"({위치})", font=font_small, fill='#AB47BC', anchor='rm')
+            current_y += row_height
+    else:
+        draw.rectangle([col3_x, current_y, col3_x + col_width, current_y + row_height],
+                       fill='#F5F5F5', outline='#E0E0E0')
+        draw.text((col3_x + col_width // 2, current_y + row_height // 2), 
+                  "없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+        current_y += row_height
+    
+    # 특수신살 개수
+    current_y_특수 = table_y + 35 + row_height * max(len(특수신살), 1) + 5
+    draw.text((col3_x + col_width // 2, current_y_특수 + 10), 
+              f"총 {len(특수신살)}개", font=font_small, fill='#7B1FA2', anchor='mm')
+    
+    # ========== 하단 요약 ==========
+    summary_y = height - 60
+    
+    # 총평 배경 (연한 회색)
+    draw.rectangle([20, summary_y, width - 20, height - 20],
+                   fill='#FAFAFA', outline='#E0E0E0')
+    
+    total_길 = len(길신)
+    total_흉 = len(흉신)
+    
+    if total_길 > total_흉:
+        총평 = "길신이 많아 전반적으로 좋은 사주입니다."
+        총평_color = '#1565C0'
+    elif total_흉 > total_길:
+        총평 = "흉신이 많아 주의가 필요한 부분이 있습니다."
+        총평_color = '#C62828'
+    else:
+        총평 = "길신과 흉신이 균형을 이루고 있습니다."
+        총평_color = '#F57C00'
+    
+    draw.text((width // 2, summary_y + 20), 
+              f"📊 길신 {total_길}개 vs 흉신 {total_흉}개", 
+              font=font_medium, fill='#333333', anchor='mm')
+    draw.text((width // 2, summary_y + 40), 
+              총평, font=font_small, fill=총평_color, anchor='mm')
     
     # 저장
     img.save(output_path, 'PNG')

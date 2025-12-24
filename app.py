@@ -7,8 +7,8 @@ import io
 import os
 from korean_lunar_calendar import KoreanLunarCalendar
 
-from saju_calculator import calc_사주, calc_대운, calc_세운, calc_월운
-from image_generator import create_원국표, create_대운표, create_세운표, create_월운표, create_오행차트, create_십성표, create_오행도
+from saju_calculator import calc_사주, calc_대운, calc_세운, calc_월운, calc_신살
+from image_generator import create_원국표, create_대운표, create_세운표, create_월운표, create_오행차트, create_십성표, create_오행도, create_신살표
 
 # ============================================
 # 음력 → 양력 변환 함수
@@ -113,9 +113,12 @@ with tab1:
                 # 성별 변환 (대운 계산용)
                 gender = '남' if 성별 == '남성' else '여'
                 
-                # 이미지 생성
+                # 신살 계산
+                신살_data = calc_신살(사주, gender)
+                
+                # 이미지 생성 (신살 포함)
                 output_path = f"/tmp/{이름}_원국표.png"
-                create_원국표(사주, 기본정보, output_path)
+                create_원국표(사주, 기본정보, output_path, 신살_data)
                 
                 # 대운 계산 및 이미지 생성
                 대운_data = calc_대운(year, month, day, 시, 분, gender)
@@ -138,6 +141,7 @@ with tab1:
                     st.write(f"- 일주: {사주['일주'][0]}{사주['일주'][1]}")
                     st.write(f"- 시주: {사주['시주'][0]}{사주['시주'][1]}")
                     st.write(f"- 오행: 목{사주['오행']['목']} 화{사주['오행']['화']} 토{사주['오행']['토']} 금{사주['오행']['금']} 수{사주['오행']['수']}")
+                    st.write(f"- 길신: {len(신살_data['길신'])}개, 흉신: {len(신살_data['흉신'])}개")
                 
                 # 원국표 다운로드 버튼
                 with open(output_path, "rb") as f:
@@ -258,6 +262,24 @@ with tab1:
                         use_container_width=True,
                         key="download_오행도"
                     )
+                
+                # 신살표 이미지 생성
+                신살_output_path = f"/tmp/{이름}_신살표.png"
+                create_신살표(신살_data, 기본정보, 신살_output_path)
+                
+                # 신살표 표시
+                st.subheader("🔮 신살 분석표")
+                st.image(신살_output_path, caption=f"{이름}님 신살표")
+                
+                with open(신살_output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 신살표 다운로드",
+                        data=f,
+                        file_name=f"{이름}_신살표.png",
+                        mime="image/png",
+                        use_container_width=True,
+                        key="download_신살표"
+                    )
 
 # ============================================
 # 탭2: 엑셀 일괄 처리
@@ -344,9 +366,12 @@ with tab2:
                     # 성별 변환
                     gender = '남' if row['성별'] == '남성' else '여'
                     
-                    # 원국표 이미지 생성
+                    # 신살 계산
+                    신살_data = calc_신살(사주, gender)
+                    
+                    # 원국표 이미지 생성 (신살 포함)
                     output_path = f"/tmp/{row['이름']}_원국표.png"
-                    create_원국표(사주, 기본정보, output_path)
+                    create_원국표(사주, 기본정보, output_path, 신살_data)
                     
                     # 대운 계산 및 이미지 생성
                     대운_data = calc_대운(year, month, day, int(row['시']), int(row['분']), gender)
@@ -375,6 +400,10 @@ with tab2:
                     오행도_output_path = f"/tmp/{row['이름']}_오행도.png"
                     create_오행도(사주, 기본정보, 오행도_output_path)
                     
+                    # 신살표 이미지 생성
+                    신살_output_path = f"/tmp/{row['이름']}_신살표.png"
+                    create_신살표(신살_data, 기본정보, 신살_output_path)
+                    
                     # ZIP에 추가 (폴더 구조)
                     folder_name = f"{row['이름']}_{row['생년']}-{row['생월']:02d}-{row['생일']:02d}"
                     zf.write(output_path, f"{folder_name}/원국표.png")
@@ -384,6 +413,7 @@ with tab2:
                     zf.write(오행_output_path, f"{folder_name}/오행차트.png")
                     zf.write(십성_output_path, f"{folder_name}/십성표.png")
                     zf.write(오행도_output_path, f"{folder_name}/오행도.png")
+                    zf.write(신살_output_path, f"{folder_name}/신살표.png")
                     
                     progress.progress((idx + 1) / len(df))
             
@@ -419,6 +449,7 @@ with st.sidebar:
     오행차트_체크 = st.checkbox("오행 차트", value=True)
     오행도_체크 = st.checkbox("오행 상생상극도", value=True)
     십성표_체크 = st.checkbox("십성표", value=True)
+    신살표_체크 = st.checkbox("신살표", value=True)
     
     st.divider()
     st.caption("v1.0 - 사주 이미지 생성기")
