@@ -8,7 +8,7 @@ import os
 from korean_lunar_calendar import KoreanLunarCalendar
 
 from saju_calculator import calc_사주, calc_대운, calc_세운, calc_월운
-from image_generator import create_원국표, create_대운표, create_세운표, create_월운표, create_오행차트, create_십성표
+from image_generator import create_원국표, create_대운표, create_세운표, create_월운표, create_오행차트, create_십성표, create_오행도
 
 # ============================================
 # 음력 → 양력 변환 함수
@@ -235,6 +235,24 @@ with tab1:
                         use_container_width=True,
                         key="download_십성표"
                     )
+                
+                # 오행도 이미지 생성
+                오행도_output_path = f"/tmp/{이름}_오행도.png"
+                create_오행도(사주, 기본정보, 오행도_output_path)
+                
+                # 오행도 표시
+                st.subheader("☯ 오행 상생상극도")
+                st.image(오행도_output_path, caption=f"{이름}님 오행도")
+                
+                with open(오행도_output_path, "rb") as f:
+                    st.download_button(
+                        label="📥 오행도 다운로드",
+                        data=f,
+                        file_name=f"{이름}_오행도.png",
+                        mime="image/png",
+                        use_container_width=True,
+                        key="download_오행도"
+                    )
 
 # ============================================
 # 탭2: 엑셀 일괄 처리
@@ -348,6 +366,10 @@ with tab2:
                     십성_output_path = f"/tmp/{row['이름']}_십성표.png"
                     create_십성표(사주, 기본정보, 십성_output_path)
                     
+                    # 오행도 이미지 생성
+                    오행도_output_path = f"/tmp/{row['이름']}_오행도.png"
+                    create_오행도(사주, 기본정보, 오행도_output_path)
+                    
                     # ZIP에 추가 (폴더 구조)
                     folder_name = f"{row['이름']}_{row['생년']}-{row['생월']:02d}-{row['생일']:02d}"
                     zf.write(output_path, f"{folder_name}/원국표.png")
@@ -356,6 +378,7 @@ with tab2:
                     zf.write(월운_output_path, f"{folder_name}/월운표.png")
                     zf.write(오행_output_path, f"{folder_name}/오행차트.png")
                     zf.write(십성_output_path, f"{folder_name}/십성표.png")
+                    zf.write(오행도_output_path, f"{folder_name}/오행도.png")
                     
                     progress.progress((idx + 1) / len(df))
             
@@ -389,6 +412,7 @@ with st.sidebar:
     세운표_체크 = st.checkbox("세운표", value=True)
     월운표_체크 = st.checkbox("월운표", value=True)
     오행차트_체크 = st.checkbox("오행 차트", value=True)
+    오행도_체크 = st.checkbox("오행 상생상극도", value=True)
     십성표_체크 = st.checkbox("십성표", value=True)
     
     st.divider()
