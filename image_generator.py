@@ -1459,9 +1459,17 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
     흉신 = 신살_data['흉신']
     특수신살 = 신살_data['특수신살']
     
-    # 이미지 크기
+    # 최대 행 수 계산
+    max_rows = max(len(길신), len(흉신), len(특수신살), 1)
+    
+    # 이미지 크기 (동적 높이)
     width = 650
-    height = 450
+    row_height = 30
+    table_y = 55
+    header_height = 35
+    table_height = header_height + (max_rows * row_height) + 30
+    summary_height = 55
+    height = table_y + table_height + summary_height + 10
     
     # 이미지 생성 (라이트 테마)
     img = Image.new('RGB', (width, height), '#FFFFFF')
@@ -1474,28 +1482,26 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
     font_small = get_font(11)
     
     # ========== 상단 제목 ==========
-    y_start = 20
+    y_start = 18
     draw.text((width // 2, y_start), f"{기본정보['이름']}님 신살 분석표", 
               font=font_title, fill='#333333', anchor='mm')
     
     # ========== 3열 레이아웃 ==========
     col_width = 200
-    col_gap = 15
-    start_x = 20
-    table_y = 60
+    col_gap = 12
+    start_x = (width - (col_width * 3 + col_gap * 2)) // 2
     
     # ========== 길신 열 ==========
     col1_x = start_x
     
     # 헤더 (파스텔 블루)
-    draw.rectangle([col1_x, table_y, col1_x + col_width, table_y + 35],
+    draw.rectangle([col1_x, table_y, col1_x + col_width, table_y + header_height],
                    fill='#E3F2FD', outline='#90CAF9')
-    draw.text((col1_x + col_width // 2, table_y + 17), "⭐ 길신", 
-              font=font_header, fill='#1565C0', anchor='mm')
+    draw.text((col1_x + col_width // 2, table_y + header_height // 2), 
+              "[길신]", font=font_header, fill='#1565C0', anchor='mm')
     
     # 길신 목록
-    row_height = 28
-    current_y = table_y + 35
+    current_y = table_y + header_height
     
     if 길신:
         for 신살명, 위치 in 길신:
@@ -1510,25 +1516,25 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
         draw.rectangle([col1_x, current_y, col1_x + col_width, current_y + row_height],
                        fill='#F5F5F5', outline='#E0E0E0')
         draw.text((col1_x + col_width // 2, current_y + row_height // 2), 
-                  "없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+                  "-", font=font_medium, fill='#BDBDBD', anchor='mm')
         current_y += row_height
     
     # 길신 개수
-    current_y += 5
-    draw.text((col1_x + col_width // 2, current_y + 10), 
+    count_y = table_y + header_height + (max_rows * row_height) + 8
+    draw.text((col1_x + col_width // 2, count_y), 
               f"총 {len(길신)}개", font=font_small, fill='#1565C0', anchor='mm')
     
     # ========== 흉신 열 ==========
     col2_x = start_x + col_width + col_gap
     
     # 헤더 (파스텔 핑크)
-    draw.rectangle([col2_x, table_y, col2_x + col_width, table_y + 35],
+    draw.rectangle([col2_x, table_y, col2_x + col_width, table_y + header_height],
                    fill='#FFEBEE', outline='#FFCDD2')
-    draw.text((col2_x + col_width // 2, table_y + 17), "⚠️ 흉신", 
-              font=font_header, fill='#C62828', anchor='mm')
+    draw.text((col2_x + col_width // 2, table_y + header_height // 2), 
+              "[흉신]", font=font_header, fill='#C62828', anchor='mm')
     
     # 흉신 목록
-    current_y = table_y + 35
+    current_y = table_y + header_height
     
     if 흉신:
         for 신살명, 위치 in 흉신:
@@ -1543,25 +1549,24 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
         draw.rectangle([col2_x, current_y, col2_x + col_width, current_y + row_height],
                        fill='#F5F5F5', outline='#E0E0E0')
         draw.text((col2_x + col_width // 2, current_y + row_height // 2), 
-                  "없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+                  "-", font=font_medium, fill='#BDBDBD', anchor='mm')
         current_y += row_height
     
     # 흉신 개수
-    current_y_흉신 = table_y + 35 + row_height * max(len(흉신), 1) + 5
-    draw.text((col2_x + col_width // 2, current_y_흉신 + 10), 
+    draw.text((col2_x + col_width // 2, count_y), 
               f"총 {len(흉신)}개", font=font_small, fill='#C62828', anchor='mm')
     
     # ========== 특수신살 열 ==========
     col3_x = start_x + (col_width + col_gap) * 2
     
     # 헤더 (파스텔 퍼플)
-    draw.rectangle([col3_x, table_y, col3_x + col_width, table_y + 35],
+    draw.rectangle([col3_x, table_y, col3_x + col_width, table_y + header_height],
                    fill='#F3E5F5', outline='#E1BEE7')
-    draw.text((col3_x + col_width // 2, table_y + 17), "🔮 특수신살", 
-              font=font_header, fill='#7B1FA2', anchor='mm')
+    draw.text((col3_x + col_width // 2, table_y + header_height // 2), 
+              "[특수신살]", font=font_header, fill='#7B1FA2', anchor='mm')
     
     # 특수신살 목록
-    current_y = table_y + 35
+    current_y = table_y + header_height
     
     if 특수신살:
         for 신살명, 위치 in 특수신살:
@@ -1576,19 +1581,18 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
         draw.rectangle([col3_x, current_y, col3_x + col_width, current_y + row_height],
                        fill='#F5F5F5', outline='#E0E0E0')
         draw.text((col3_x + col_width // 2, current_y + row_height // 2), 
-                  "없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+                  "-", font=font_medium, fill='#BDBDBD', anchor='mm')
         current_y += row_height
     
     # 특수신살 개수
-    current_y_특수 = table_y + 35 + row_height * max(len(특수신살), 1) + 5
-    draw.text((col3_x + col_width // 2, current_y_특수 + 10), 
+    draw.text((col3_x + col_width // 2, count_y), 
               f"총 {len(특수신살)}개", font=font_small, fill='#7B1FA2', anchor='mm')
     
     # ========== 하단 요약 ==========
-    summary_y = height - 60
+    summary_y = count_y + 25
     
     # 총평 배경 (연한 회색)
-    draw.rectangle([20, summary_y, width - 20, height - 20],
+    draw.rectangle([start_x, summary_y, start_x + col_width * 3 + col_gap * 2, summary_y + 50],
                    fill='#FAFAFA', outline='#E0E0E0')
     
     total_길 = len(길신)
@@ -1604,10 +1608,10 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
         총평 = "길신과 흉신이 균형을 이루고 있습니다."
         총평_color = '#F57C00'
     
-    draw.text((width // 2, summary_y + 20), 
-              f"📊 길신 {total_길}개 vs 흉신 {total_흉}개", 
+    draw.text((width // 2, summary_y + 17), 
+              f"길신 {total_길}개 vs 흉신 {total_흉}개", 
               font=font_medium, fill='#333333', anchor='mm')
-    draw.text((width // 2, summary_y + 40), 
+    draw.text((width // 2, summary_y + 36), 
               총평, font=font_small, fill=총평_color, anchor='mm')
     
     # 저장
