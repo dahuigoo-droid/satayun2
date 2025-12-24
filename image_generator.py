@@ -130,7 +130,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     
     # 이미지 크기 (신살 있으면 높이 증가)
     width = 600
-    height = 560 if 신살_data else 500
+    height = 505 if 신살_data else 445
     
     # 이미지 생성
     img = Image.new('RGB', (width, height), '#FFFFFF')
@@ -419,8 +419,9 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
     num_cols = len(대운_list)
     cell_width = 80
     label_width = 70
-    width = label_width + (cell_width * num_cols) + 20
-    height = 400
+    content_width = label_width + (cell_width * num_cols)
+    width = content_width  # 좌우 여백 없음
+    height = 290
     
     # 이미지 생성
     img = Image.new('RGB', (width, height), '#FFFFFF')
@@ -591,8 +592,8 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
     num_cols = len(세운_list)
     cell_width = 75
     label_width = 70
-    width = label_width + (cell_width * num_cols) + 20
-    height = 380
+    width = label_width + (cell_width * num_cols)
+    height = 285
     
     # 이미지 생성
     img = Image.new('RGB', (width, height), '#FFFFFF')
@@ -770,8 +771,8 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     num_cols = 12
     cell_width = 65
     label_width = 70
-    width = label_width + (cell_width * num_cols) + 20
-    height = 350
+    width = label_width + (cell_width * num_cols)
+    height = 255
     
     # 이미지 생성
     img = Image.new('RGB', (width, height), '#FFFFFF')
@@ -951,7 +952,8 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
     chart_height = 150
     bar_width = 60
     gap = 25
-    start_x = 60
+    # 중앙 정렬: (width - (bar_width * 5 + gap * 4)) / 2
+    start_x = (width - (bar_width * 5 + gap * 4)) // 2
     
     오행_목록 = ['목', '화', '토', '금', '수']
     max_val = max(오행.values()) if max(오행.values()) > 0 else 1
@@ -1105,12 +1107,14 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
     table_y = 55
     
     # 열 너비
-    col_widths = [70, 70, 60, 70, 90, 200]  # 분류, 십성, 음양, 오행, 개수, 강도
+    col_widths = [70, 70, 55, 60, 60, 130]  # 분류, 십성, 음양, 오행, 개수, 강도
+    total_width = sum(col_widths)
+    start_x = (width - total_width) // 2  # 중앙 정렬
     row_height = 28
     
     # 헤더
     headers = ['분류', '십성', '음양', '오행', '개수', '강도']
-    x = 20
+    x = start_x
     for i, header in enumerate(headers):
         draw.rectangle([x, table_y, x + col_widths[i], table_y + 30],
                        fill='#E8E8E8', outline='#CCCCCC')
@@ -1128,7 +1132,7 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
         
         # 분류별 2행
         for idx, (십성명, 음양) in enumerate(십성들):
-            x = 20
+            x = start_x
             
             # 분류 (첫 행만)
             if idx == 0:
@@ -1249,9 +1253,9 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
     draw.text((width // 2, 25), f"나의 오행: {일간}({일간_오행})", 
               font=font_title, fill='#333333', anchor='mm')
     
-    # 범례
-    draw.text((50, 55), "→ 상생(生)", font=font_small, fill='#1565C0', anchor='lm')
-    draw.text((150, 55), "→ 상극(剋)", font=font_small, fill='#C62828', anchor='lm')
+    # 범례 (중앙 정렬)
+    draw.text((width // 2 - 60, 55), "→ 상생(生)", font=font_small, fill='#1565C0', anchor='lm')
+    draw.text((width // 2 + 30, 55), "→ 상극(剋)", font=font_small, fill='#C62828', anchor='lm')
     
     # ========== 오행 원형 배치 ==========
     center_x, center_y = width // 2, height // 2 + 20
@@ -1640,7 +1644,7 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
     
     # 이미지 크기
     width = 700
-    height = 420
+    height = 265
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -1664,35 +1668,37 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
     
     # 테이블
     table_y = 55
-    col_width = 55
-    row_height = 28
-    start_x = 35
+    col_width = 50
+    row_height = 26
+    label_width = 50
+    table_width = label_width + 12 * col_width  # 50 + 600 = 650
+    start_x = (width - table_width) // 2  # 중앙 정렬
     
     # 헤더 (지지)
-    draw.rectangle([start_x, table_y, start_x + 50, table_y + 30],
+    draw.rectangle([start_x, table_y, start_x + label_width, table_y + 28],
                    fill='#E8E8E8', outline='#CCCCCC')
-    draw.text((start_x + 25, table_y + 15), "지지", 
+    draw.text((start_x + label_width // 2, table_y + 14), "지지", 
               font=font_header, fill='#333333', anchor='mm')
     
     for i, 지지명 in enumerate(지지):
-        x = start_x + 50 + i * col_width
+        x = start_x + label_width + i * col_width
         # 원국에 있는 지지 강조
         is_원국 = 지지명 in 원국_지지.values()
         bg_color = '#E3F2FD' if is_원국 else '#F5F5F5'
-        draw.rectangle([x, table_y, x + col_width, table_y + 30],
+        draw.rectangle([x, table_y, x + col_width, table_y + 28],
                        fill=bg_color, outline='#CCCCCC')
-        draw.text((x + col_width // 2, table_y + 15), 지지명, 
+        draw.text((x + col_width // 2, table_y + 14), 지지명, 
                   font=font_header, fill='#333333', anchor='mm')
     
     # 운성 행
-    current_y = table_y + 30
-    draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+    current_y = table_y + 28
+    draw.rectangle([start_x, current_y, start_x + label_width, current_y + row_height],
                    fill='#E8E8E8', outline='#CCCCCC')
-    draw.text((start_x + 25, current_y + row_height // 2), "운성", 
+    draw.text((start_x + label_width // 2, current_y + row_height // 2), "운성", 
               font=font_header, fill='#333333', anchor='mm')
     
     for i, 지지명 in enumerate(지지):
-        x = start_x + 50 + i * col_width
+        x = start_x + label_width + i * col_width
         운성 = 운성_전체[지지명]
         에너지_상태, 색상 = 에너지[운성]
         
@@ -1705,13 +1711,13 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
     
     # 에너지 행
     current_y += row_height
-    draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+    draw.rectangle([start_x, current_y, start_x + label_width, current_y + row_height],
                    fill='#E8E8E8', outline='#CCCCCC')
-    draw.text((start_x + 25, current_y + row_height // 2), "에너지", 
+    draw.text((start_x + label_width // 2, current_y + row_height // 2), "에너지", 
               font=font_header, fill='#333333', anchor='mm')
     
     for i, 지지명 in enumerate(지지):
-        x = start_x + 50 + i * col_width
+        x = start_x + label_width + i * col_width
         운성 = 운성_전체[지지명]
         에너지_상태, 색상 = 에너지[운성]
         
@@ -1723,10 +1729,10 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
                   font=font_small, fill='#666666', anchor='mm')
     
     # 내 사주 운성 요약
-    summary_y = current_y + 50
-    draw.rectangle([20, summary_y, width - 20, summary_y + 100],
+    summary_y = current_y + 35
+    draw.rectangle([20, summary_y, width - 20, summary_y + 95],
                    fill='#FAFAFA', outline='#E0E0E0')
-    draw.text((width // 2, summary_y + 15), "[ 내 사주 12운성 ]", 
+    draw.text((width // 2, summary_y + 12), "[ 내 사주 12운성 ]", 
               font=font_header, fill='#333333', anchor='mm')
     
     col_positions = [100, 250, 400, 550]
@@ -1739,12 +1745,12 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
         운성 = 운성_전체[지지명]
         에너지_상태, 색상 = 에너지[운성]
         
-        draw.text((x, summary_y + 40), label, font=font_medium, fill='#666666', anchor='mm')
-        draw.text((x, summary_y + 60), f"{지지명} -> {운성}", font=font_medium, fill=색상, anchor='mm')
-        draw.text((x, summary_y + 80), f"({에너지_상태})", font=font_small, fill='#999999', anchor='mm')
+        draw.text((x, summary_y + 35), label, font=font_medium, fill='#666666', anchor='mm')
+        draw.text((x, summary_y + 55), f"{지지명} -> {운성}", font=font_medium, fill=색상, anchor='mm')
+        draw.text((x, summary_y + 73), f"({에너지_상태})", font=font_small, fill='#999999', anchor='mm')
     
     # 범례
-    legend_y = summary_y + 115
+    legend_y = summary_y + 105
     draw.text((20, legend_y), "강한 운성: 건록, 제왕, 관대", font=font_small, fill='#1565C0', anchor='lm')
     draw.text((250, legend_y), "약한 운성: 병, 사, 묘, 절", font=font_small, fill='#C62828', anchor='lm')
     draw.text((450, legend_y), "시작 운성: 장생, 태, 양", font=font_small, fill='#7B1FA2', anchor='lm')
@@ -1771,7 +1777,7 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
     }
     
     width = 700
-    height = 380
+    height = 290
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -1785,38 +1791,40 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
               font=font_title, fill='#333333', anchor='mm')
     
     table_y = 55
-    col_width = 55
-    row_height = 30
-    start_x = 35
+    col_width = 50
+    row_height = 28
+    label_width = 50
+    table_width = label_width + 12 * col_width
+    start_x = (width - table_width) // 2  # 중앙 정렬
     
     # 헤더
-    draw.rectangle([start_x, table_y, start_x + 50, table_y + 30],
+    draw.rectangle([start_x, table_y, start_x + label_width, table_y + 28],
                    fill='#E8E8E8', outline='#CCCCCC')
-    draw.text((start_x + 25, table_y + 15), "구분", 
+    draw.text((start_x + label_width // 2, table_y + 14), "구분", 
               font=font_header, fill='#333333', anchor='mm')
     
     for i, 지지명 in enumerate(지지):
-        x = start_x + 50 + i * col_width
+        x = start_x + label_width + i * col_width
         is_원국 = 지지명 in 원국_지지.values()
         bg_color = '#E3F2FD' if is_원국 else '#E8E8E8'
-        draw.rectangle([x, table_y, x + col_width, table_y + 30],
+        draw.rectangle([x, table_y, x + col_width, table_y + 28],
                        fill=bg_color, outline='#CCCCCC')
-        draw.text((x + col_width // 2, table_y + 15), 지지명, 
+        draw.text((x + col_width // 2, table_y + 14), 지지명, 
                   font=font_header, fill='#333333', anchor='mm')
     
     # 여기, 중기, 본기 행
     행_이름 = ['여기', '중기', '본기']
     
     for row_idx, 행 in enumerate(행_이름):
-        current_y = table_y + 30 + row_idx * row_height
+        current_y = table_y + 28 + row_idx * row_height
         
-        draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+        draw.rectangle([start_x, current_y, start_x + label_width, current_y + row_height],
                        fill='#F5F5F5', outline='#CCCCCC')
-        draw.text((start_x + 25, current_y + row_height // 2), 행, 
+        draw.text((start_x + label_width // 2, current_y + row_height // 2), 행, 
                   font=font_medium, fill='#333333', anchor='mm')
         
         for i, 지지명 in enumerate(지지):
-            x = start_x + 50 + i * col_width
+            x = start_x + label_width + i * col_width
             지장간 = 지장간_전체[지지명][행]
             
             is_원국 = 지지명 in 원국_지지.values()
@@ -1830,10 +1838,10 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
                       font=font_medium, fill=color, anchor='mm')
     
     # 내 사주 지장간 요약
-    summary_y = table_y + 30 + len(행_이름) * row_height + 30
-    draw.rectangle([20, summary_y, width - 20, summary_y + 90],
+    summary_y = table_y + 28 + len(행_이름) * row_height + 20
+    draw.rectangle([20, summary_y, width - 20, summary_y + 80],
                    fill='#FAFAFA', outline='#E0E0E0')
-    draw.text((width // 2, summary_y + 15), "[ 내 사주 지장간 ]", 
+    draw.text((width // 2, summary_y + 12), "[ 내 사주 지장간 ]", 
               font=font_header, fill='#333333', anchor='mm')
     
     col_positions = [100, 250, 400, 550]
@@ -1845,7 +1853,7 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
         지지명 = 원국_지지[col]
         지장간 = 지장간_전체[지지명]
         
-        draw.text((x, summary_y + 40), f"{label}: {지지명}", font=font_medium, fill='#666666', anchor='mm')
+        draw.text((x, summary_y + 35), f"{label}: {지지명}", font=font_medium, fill='#666666', anchor='mm')
         
         지장간_str = []
         if 지장간['여기']:
@@ -1855,11 +1863,11 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
         if 지장간['본기']:
             지장간_str.append(지장간['본기'])
         
-        draw.text((x, summary_y + 65), ' '.join(지장간_str), font=font_medium, fill='#1565C0', anchor='mm')
+        draw.text((x, summary_y + 58), ' '.join(지장간_str), font=font_medium, fill='#1565C0', anchor='mm')
     
-    desc_y = summary_y + 100
-    draw.text((20, desc_y), "* 지장간: 지지 속에 숨어있는 천간 (본기가 가장 강함)", 
-              font=font_small, fill='#666666', anchor='lm')
+    desc_y = summary_y + 88
+    draw.text((width // 2, desc_y), "* 지장간: 지지 속에 숨어있는 천간 (본기가 가장 강함)", 
+              font=font_small, fill='#666666', anchor='mm')
     
     img.save(output_path, 'PNG')
     return output_path
@@ -1877,7 +1885,7 @@ def create_합충형파해표(사주_data, 기본정보, output_path="합충형�
     천간합_결과 = calc_천간합(사주_data)
     
     width = 650
-    height = 500
+    height = 520
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -1978,7 +1986,7 @@ def create_궁성표(사주_data, 기본정보, output_path="궁성표.png"):
     궁성 = calc_궁성(사주_data)
     
     width = 700
-    height = 350
+    height = 250
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2045,7 +2053,7 @@ def create_육친표(사주_data, 기본정보, gender='남', output_path="육�
     육친 = calc_육친(사주_data, gender)
     
     width = 650
-    height = 320
+    height = 295
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2060,16 +2068,18 @@ def create_육친표(사주_data, 기본정보, gender='남', output_path="육�
               font=font_title, fill='#333333', anchor='mm')
     
     table_y = 55
-    col_width = 145
+    label_width = 55
+    col_width = 140
     row_height = 32
-    start_x = 25
+    table_width = label_width + col_width * 4
+    start_x = (width - table_width) // 2  # 중앙 정렬
     
     headers = ['구분', '년주', '월주', '일주', '시주']
     for i, h in enumerate(headers):
         if i == 0:
-            x, w = start_x, 50
+            x, w = start_x, label_width
         else:
-            x, w = start_x + 50 + (i-1) * col_width, col_width
+            x, w = start_x + label_width + (i-1) * col_width, col_width
         draw.rectangle([x, table_y, x + w, table_y + 28], fill='#E8E8E8', outline='#CCCCCC')
         draw.text((x + w // 2, table_y + 14), h, font=font_header, fill='#333333', anchor='mm')
     
@@ -2078,13 +2088,13 @@ def create_육친표(사주_data, 기본정보, gender='남', output_path="육�
     for row_idx, (행_이름, key) in enumerate(rows):
         current_y = table_y + 28 + row_idx * row_height
         
-        draw.rectangle([start_x, current_y, start_x + 50, current_y + row_height],
+        draw.rectangle([start_x, current_y, start_x + label_width, current_y + row_height],
                        fill='#F5F5F5', outline='#CCCCCC')
-        draw.text((start_x + 25, current_y + row_height // 2), 행_이름[:4], 
+        draw.text((start_x + label_width // 2, current_y + row_height // 2), 행_이름[:4], 
                   font=font_small, fill='#333333', anchor='mm')
         
         for i, col in enumerate(['년', '월', '일', '시']):
-            x = start_x + 50 + i * col_width
+            x = start_x + label_width + i * col_width
             if '십성' in 행_이름:
                 값 = 육친[col][key]['십성']
                 color = '#1565C0'
@@ -2123,7 +2133,7 @@ def create_납음오행표(사주_data, 기본정보, output_path="납음오행�
     납음 = calc_납음오행(사주_data)
     
     width = 650
-    height = 300
+    height = 250
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2179,7 +2189,7 @@ def create_격국표(사주_data, 기본정보, output_path="격국표.png"):
     격국 = calc_격국(사주_data)
     
     width = 550
-    height = 280
+    height = 240
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2228,7 +2238,7 @@ def create_공망표(사주_data, 기본정보, output_path="공망표.png"):
     공망 = calc_공망_전체(사주_data)
     
     width = 600
-    height = 320
+    height = 275
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2284,7 +2294,7 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
     용신 = calc_용신(사주_data)
     
     width = 600
-    height = 350
+    height = 290
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2342,7 +2352,7 @@ def create_일진표(year, month, output_path="일진표.png"):
     일진_데이터 = calc_일진표(year, month)
     
     width = 750
-    height = 550
+    height = 455
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2397,275 +2407,6 @@ def create_일진표(year, month, output_path="일진표.png"):
                     draw.text((x + cell_width // 2, current_y + 48), f"{day_data['천간_한자']}{day_data['지지_한자']}", 
                               font=font_small, fill='#999999', anchor='mm')
                     draw.text((x + cell_width - 8, current_y + 12), day_data['음력'], font=font_tiny, fill='#999999', anchor='rm')
-        
-        current_y += cell_height
-    
-    img.save(output_path, 'PNG')
-    return output_path
-# ============================================
-def create_공망표(사주_data, 기본정보, output_path="공망표.png"):
-    """공망 분석 이미지"""
-    
-    from saju_calculator import calc_공망_전체
-    
-    공망 = calc_공망_전체(사주_data)
-    
-    width = 600
-    height = 380
-    
-    img = Image.new('RGB', (width, height), '#FFFFFF')
-    draw = ImageDraw.Draw(img)
-    
-    font_title = get_font(16)
-    font_header = get_font(13, bold=True)
-    font_medium = get_font(11)
-    font_small = get_font(10)
-    
-    draw.text((width // 2, 20), f"{기본정보['이름']}님 공망 분석", 
-              font=font_title, fill='#333333', anchor='mm')
-    
-    # 일주 공망 (메인)
-    main_y = 55
-    draw.rectangle([30, main_y, width - 30, main_y + 80],
-                   fill='#F3E5F5', outline='#CE93D8')
-    
-    일주_공망 = 공망['일']['공망']
-    draw.text((width // 2, main_y + 20), "일주 기준 공망 (가장 중요)", 
-              font=font_medium, fill='#7B1FA2', anchor='mm')
-    draw.text((width // 2, main_y + 50), f"{일주_공망[0]} · {일주_공망[1]}", 
-              font=get_font(22, bold=True), fill='#7B1FA2', anchor='mm')
-    draw.text((width // 2, main_y + 72), f"({공망['일']['순']})", 
-              font=font_small, fill='#999999', anchor='mm')
-    
-    # 각 주별 공망
-    table_y = main_y + 95
-    col_width = 130
-    
-    for i, (col, label) in enumerate([('년', '년주'), ('월', '월주'), ('일', '일주'), ('시', '시주')]):
-        x = 35 + i * col_width
-        공망_지지 = 공망[col]['공망']
-        
-        draw.rectangle([x, table_y, x + col_width - 5, table_y + 60],
-                       fill='#FAFAFA', outline='#E0E0E0')
-        draw.text((x + (col_width - 5) // 2, table_y + 15), label, 
-                  font=font_header, fill='#333333', anchor='mm')
-        draw.text((x + (col_width - 5) // 2, table_y + 40), f"{공망_지지[0]} · {공망_지지[1]}", 
-                  font=font_medium, fill='#7B1FA2', anchor='mm')
-    
-    # 공망 해당 여부
-    해당_y = table_y + 75
-    draw.rectangle([30, 해당_y, width - 30, 해당_y + 60],
-                   fill='#FFF8E1', outline='#FFE082')
-    
-    draw.text((width // 2, 해당_y + 15), "[ 원국 내 공망 해당 ]", 
-              font=font_header, fill='#E65100', anchor='mm')
-    
-    공망_해당 = 공망.get('공망_해당', [])
-    if 공망_해당:
-        해당_str = ', '.join([f"{x['위치']}지({x['지지']})" for x in 공망_해당])
-        draw.text((width // 2, 해당_y + 40), f"해당: {해당_str}", 
-                  font=font_medium, fill='#C62828', anchor='mm')
-    else:
-        draw.text((width // 2, 해당_y + 40), "공망 해당 없음", 
-                  font=font_medium, fill='#4CAF50', anchor='mm')
-    
-    # 설명
-    desc_y = 해당_y + 75
-    draw.text((30, desc_y), "* 공망: 비어있는 기운. 해당 궁의 일이 허무하거나 늦게 이루어짐", 
-              font=font_small, fill='#666666', anchor='lm')
-    draw.text((30, desc_y + 18), "* 년지 공망: 조상덕 부족 | 월지 공망: 직장운 부침 | 시지 공망: 자녀운 약함", 
-              font=font_small, fill='#666666', anchor='lm')
-    
-    img.save(output_path, 'PNG')
-    return output_path
-
-
-# ============================================
-# 용신표 이미지 생성
-# ============================================
-def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
-    """용신 분석 이미지"""
-    
-    from saju_calculator import calc_용신
-    
-    용신 = calc_용신(사주_data)
-    
-    width = 600
-    height = 400
-    
-    img = Image.new('RGB', (width, height), '#FFFFFF')
-    draw = ImageDraw.Draw(img)
-    
-    font_title = get_font(16)
-    font_header = get_font(14, bold=True)
-    font_medium = get_font(12)
-    font_small = get_font(10)
-    
-    draw.text((width // 2, 20), f"{기본정보['이름']}님 용신 분석 (참고용)", 
-              font=font_title, fill='#333333', anchor='mm')
-    
-    # 신강약
-    status_y = 55
-    신강약_color = '#1565C0' if 용신['신강약'] == '신강' else '#F44336'
-    draw.rectangle([30, status_y, width - 30, status_y + 50],
-                   fill='#E3F2FD' if 용신['신강약'] == '신강' else '#FFEBEE', 
-                   outline='#90CAF9' if 용신['신강약'] == '신강' else '#FFCDD2')
-    
-    draw.text((width // 2, status_y + 18), "일간 강약", 
-              font=font_medium, fill='#666666', anchor='mm')
-    draw.text((width // 2, status_y + 38), f"{용신['신강약']} ({용신['신강점수']})", 
-              font=font_header, fill=신강약_color, anchor='mm')
-    
-    # 용신/희신/기신
-    오행_색상 = {'목': '#4CAF50', '화': '#F44336', '토': '#795548', '금': '#FFC107', '수': '#2196F3'}
-    
-    box_y = status_y + 65
-    box_width = 170
-    box_height = 90
-    
-    항목들 = [
-        ('용신', 용신['용신'], 용신['용신_설명'], '#4CAF50'),
-        ('희신', 용신['희신'], 용신['희신_설명'], '#2196F3'),
-        ('기신', 용신['기신'], 용신['기신_설명'], '#F44336'),
-    ]
-    
-    for i, (이름, 오행, 설명, 색상) in enumerate(항목들):
-        x = 30 + i * (box_width + 10)
-        
-        draw.rectangle([x, box_y, x + box_width, box_y + box_height],
-                       fill='#FAFAFA', outline='#E0E0E0')
-        
-        # 헤더
-        draw.rectangle([x, box_y, x + box_width, box_y + 28],
-                       fill=색상, outline=색상)
-        draw.text((x + box_width // 2, box_y + 14), 이름, 
-                  font=font_header, fill='#FFFFFF', anchor='mm')
-        
-        # 오행
-        draw.text((x + box_width // 2, box_y + 50), 오행, 
-                  font=get_font(18, bold=True), fill=오행_색상.get(오행, '#333333'), anchor='mm')
-        
-        # 설명
-        draw.text((x + box_width // 2, box_y + 75), 설명, 
-                  font=font_small, fill='#666666', anchor='mm')
-    
-    # 해석
-    해석_y = box_y + box_height + 20
-    draw.rectangle([30, 해석_y, width - 30, 해석_y + 70],
-                   fill='#FFF8E1', outline='#FFE082')
-    
-    draw.text((width // 2, 해석_y + 15), "[ 용신 활용법 ]", 
-              font=font_header, fill='#E65100', anchor='mm')
-    draw.text((width // 2, 해석_y + 38), f"용신({용신['용신']})을 강화하고, 기신({용신['기신']})을 피하면 좋음", 
-              font=font_medium, fill='#333333', anchor='mm')
-    draw.text((width // 2, 해석_y + 55), f"색상/방향/직업 등에서 {용신['용신']} 기운 활용 권장", 
-              font=font_small, fill='#666666', anchor='mm')
-    
-    # 주의사항
-    warn_y = 해석_y + 85
-    draw.text((width // 2, warn_y), 용신['주의'], 
-              font=font_small, fill='#C62828', anchor='mm')
-    
-    img.save(output_path, 'PNG')
-    return output_path
-
-
-# ============================================
-# 일진표 (달력) 이미지 생성
-# ============================================
-def create_일진표(year, month, output_path="일진표.png"):
-    """월별 일진 달력 이미지"""
-    
-    from saju_calculator import calc_일진표
-    import calendar
-    
-    일진_데이터 = calc_일진표(year, month)
-    
-    width = 750
-    height = 580
-    
-    img = Image.new('RGB', (width, height), '#FFFFFF')
-    draw = ImageDraw.Draw(img)
-    
-    font_title = get_font(18)
-    font_header = get_font(12, bold=True)
-    font_medium = get_font(11)
-    font_small = get_font(9)
-    font_tiny = get_font(8)
-    
-    # 제목
-    draw.text((width // 2, 25), f"{year}년 {month}월 일진표", 
-              font=font_title, fill='#333333', anchor='mm')
-    draw.text((width // 2, 48), f"월주: {일진_데이터['월주']}", 
-              font=font_medium, fill='#1565C0', anchor='mm')
-    
-    # 요일 헤더
-    요일 = ['일', '월', '화', '수', '목', '금', '토']
-    요일_색상 = ['#C62828', '#333333', '#333333', '#333333', '#333333', '#333333', '#1565C0']
-    
-    cell_width = 100
-    cell_height = 75
-    start_x = 30
-    start_y = 75
-    
-    for i, (요일명, 색상) in enumerate(zip(요일, 요일_색상)):
-        x = start_x + i * cell_width
-        draw.rectangle([x, start_y, x + cell_width, start_y + 25],
-                       fill='#F5F5F5', outline='#E0E0E0')
-        draw.text((x + cell_width // 2, start_y + 12), 요일명, 
-                  font=font_header, fill=색상, anchor='mm')
-    
-    # 달력 그리기
-    cal = calendar.Calendar()
-    weeks = list(cal.monthdayscalendar(year, month))
-    
-    current_y = start_y + 25
-    
-    for week_idx, week in enumerate(weeks):
-        for day_idx, day in enumerate(week):
-            x = start_x + day_idx * cell_width
-            
-            # 셀 배경
-            if day == 0:
-                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height],
-                               fill='#FAFAFA', outline='#E0E0E0')
-            else:
-                # 주말 색상
-                if day_idx == 0:  # 일요일
-                    bg_color = '#FFEBEE'
-                elif day_idx == 6:  # 토요일
-                    bg_color = '#E3F2FD'
-                else:
-                    bg_color = '#FFFFFF'
-                
-                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height],
-                               fill=bg_color, outline='#E0E0E0')
-                
-                # 날짜 찾기
-                day_data = None
-                for d in 일진_데이터['days']:
-                    if d and d['day'] == day:
-                        day_data = d
-                        break
-                
-                if day_data:
-                    # 날짜
-                    날짜_색상 = '#C62828' if day_idx == 0 else '#1565C0' if day_idx == 6 else '#333333'
-                    draw.text((x + 8, current_y + 12), str(day), 
-                              font=font_header, fill=날짜_색상, anchor='lm')
-                    
-                    # 일진
-                    draw.text((x + cell_width // 2, current_y + 35), day_data['일진'], 
-                              font=font_medium, fill='#333333', anchor='mm')
-                    
-                    # 한자
-                    draw.text((x + cell_width // 2, current_y + 52), 
-                              f"{day_data['천간_한자']}{day_data['지지_한자']}", 
-                              font=font_small, fill='#999999', anchor='mm')
-                    
-                    # 음력
-                    draw.text((x + cell_width - 8, current_y + 12), day_data['음력'], 
-                              font=font_tiny, fill='#999999', anchor='rm')
         
         current_y += cell_height
     
