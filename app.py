@@ -10,10 +10,10 @@ from korean_lunar_calendar import KoreanLunarCalendar
 from saju_calculator import calc_사주, calc_대운, calc_세운, calc_월운, calc_신살
 from image_generator import (
     create_원국표, create_대운표, create_세운표, create_월운표, 
-    create_오행차트, create_십성표, create_오행도, create_신살표,
+    create_오행차트, create_십성표, create_신살표,
     create_12운성표, create_지장간표, create_합충형파해표,
     create_궁성표, create_육친표, create_납음오행표,
-    create_격국표, create_공망표, create_용신표, create_일진표
+    create_격국표, create_공망표, create_일진표
 )
 
 # ============================================
@@ -251,24 +251,6 @@ with tab1:
                         key="download_십성표"
                     )
                 
-                # 오행도 이미지 생성
-                오행도_output_path = f"/tmp/{이름}_오행도.png"
-                create_오행도(사주, 기본정보, 오행도_output_path)
-                
-                # 오행도 표시
-                st.subheader("☯ 오행 상생상극도")
-                st.image(오행도_output_path, caption=f"{이름}님 오행도")
-                
-                with open(오행도_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 오행도 다운로드",
-                        data=f,
-                        file_name=f"{이름}_오행도.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_오행도"
-                    )
-                
                 # 신살표 이미지 생성
                 신살_output_path = f"/tmp/{이름}_신살표.png"
                 create_신살표(신살_data, 기본정보, 신살_output_path)
@@ -427,23 +409,6 @@ with tab1:
                         use_container_width=True,
                         key="download_공망표"
                     )
-                
-                # 용신표
-                용신_output_path = f"/tmp/{이름}_용신표.png"
-                create_용신표(사주, 기본정보, 용신_output_path)
-                
-                st.subheader("💎 용신표")
-                st.image(용신_output_path, caption=f"{이름}님 용신표")
-                
-                with open(용신_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 용신표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_용신표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_용신표"
-                    )
 
 # ============================================
 # 탭2: 엑셀 일괄 처리
@@ -560,10 +525,6 @@ with tab2:
                     십성_output_path = f"/tmp/{row['이름']}_십성표.png"
                     create_십성표(사주, 기본정보, 십성_output_path)
                     
-                    # 오행도 이미지 생성
-                    오행도_output_path = f"/tmp/{row['이름']}_오행도.png"
-                    create_오행도(사주, 기본정보, 오행도_output_path)
-                    
                     # 신살표 이미지 생성
                     신살_output_path = f"/tmp/{row['이름']}_신살표.png"
                     create_신살표(신살_data, 기본정보, 신살_output_path)
@@ -600,29 +561,23 @@ with tab2:
                     공망_output_path = f"/tmp/{row['이름']}_공망표.png"
                     create_공망표(사주, 기본정보, 공망_output_path)
                     
-                    # 용신표
-                    용신_output_path = f"/tmp/{row['이름']}_용신표.png"
-                    create_용신표(사주, 기본정보, 용신_output_path)
-                    
                     # ZIP에 추가 (폴더 구조)
                     folder_name = f"{row['이름']}_{row['생년']}-{row['생월']:02d}-{row['생일']:02d}"
                     zf.write(output_path, f"{folder_name}/01_원국표.png")
                     zf.write(대운_output_path, f"{folder_name}/02_대운표.png")
                     zf.write(세운_output_path, f"{folder_name}/03_세운표.png")
                     zf.write(월운_output_path, f"{folder_name}/04_월운표.png")
-                    zf.write(오행_output_path, f"{folder_name}/05_오행차트.png")
+                    zf.write(오행_output_path, f"{folder_name}/05_오행분석.png")
                     zf.write(십성_output_path, f"{folder_name}/06_십성표.png")
-                    zf.write(오행도_output_path, f"{folder_name}/07_오행도.png")
-                    zf.write(신살_output_path, f"{folder_name}/08_신살표.png")
-                    zf.write(운성_output_path, f"{folder_name}/09_12운성표.png")
-                    zf.write(지장간_output_path, f"{folder_name}/10_지장간표.png")
-                    zf.write(합충_output_path, f"{folder_name}/11_합충형파해표.png")
-                    zf.write(궁성_output_path, f"{folder_name}/12_궁성표.png")
-                    zf.write(육친_output_path, f"{folder_name}/13_육친표.png")
-                    zf.write(납음_output_path, f"{folder_name}/14_납음오행표.png")
-                    zf.write(격국_output_path, f"{folder_name}/15_격국표.png")
-                    zf.write(공망_output_path, f"{folder_name}/16_공망표.png")
-                    zf.write(용신_output_path, f"{folder_name}/17_용신표.png")
+                    zf.write(신살_output_path, f"{folder_name}/07_신살표.png")
+                    zf.write(운성_output_path, f"{folder_name}/08_12운성표.png")
+                    zf.write(지장간_output_path, f"{folder_name}/09_지장간표.png")
+                    zf.write(합충_output_path, f"{folder_name}/10_합충형파해표.png")
+                    zf.write(궁성_output_path, f"{folder_name}/11_궁성표.png")
+                    zf.write(육친_output_path, f"{folder_name}/12_육친표.png")
+                    zf.write(납음_output_path, f"{folder_name}/13_납음오행표.png")
+                    zf.write(격국_output_path, f"{folder_name}/14_격국표.png")
+                    zf.write(공망_output_path, f"{folder_name}/15_공망표.png")
                     
                     progress.progress((idx + 1) / len(df))
             
@@ -655,8 +610,7 @@ with st.sidebar:
     대운표_체크 = st.checkbox("대운표", value=True)
     세운표_체크 = st.checkbox("세운표", value=True)
     월운표_체크 = st.checkbox("월운표", value=True)
-    오행차트_체크 = st.checkbox("오행 차트", value=True)
-    오행도_체크 = st.checkbox("오행 상생상극도", value=True)
+    오행차트_체크 = st.checkbox("오행 분석", value=True)
     십성표_체크 = st.checkbox("십성표", value=True)
     신살표_체크 = st.checkbox("신살표", value=True)
     운성표_체크 = st.checkbox("12운성표", value=True)
@@ -667,7 +621,6 @@ with st.sidebar:
     납음오행표_체크 = st.checkbox("납음오행표", value=True)
     격국표_체크 = st.checkbox("격국표", value=True)
     공망표_체크 = st.checkbox("공망표", value=True)
-    용신표_체크 = st.checkbox("용신표", value=True)
     
     st.divider()
     st.caption("v1.0 - 사주 이미지 생성기")
