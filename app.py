@@ -25,7 +25,7 @@ ZODIAC_PATH = os.path.join(os.path.dirname(__file__), 'images', 'zodiac')
 def 음력_to_양력(year, month, day):
     """음력 날짜를 양력으로 변환"""
     calendar = KoreanLunarCalendar()
-    calendar.setLunarDate(year, month, day, False)  # False = 평달
+    calendar.setLunarDate(year, month, day, False)
     return calendar.solarYear, calendar.solarMonth, calendar.solarDay
 
 def 양력_to_음력(year, month, day):
@@ -44,6 +44,38 @@ st.set_page_config(
 )
 
 st.title("🔮 사주/타로/연애 이미지 생성기")
+
+# ============================================
+# 사이드바
+# ============================================
+with st.sidebar:
+    st.header("🔮 서비스 선택")
+    서비스 = st.radio(
+        "생성할 이미지 종류",
+        ["사주", "타로 (준비중)", "연애상담 (준비중)"]
+    )
+    
+    st.divider()
+    
+    st.header("📊 생성할 이미지")
+    원국표_체크 = st.checkbox("원국표", value=True)
+    대운표_체크 = st.checkbox("대운표", value=True)
+    세운표_체크 = st.checkbox("세운표", value=True)
+    월운표_체크 = st.checkbox("월운표", value=True)
+    오행차트_체크 = st.checkbox("오행 분석", value=True)
+    십성표_체크 = st.checkbox("십성표", value=True)
+    신살표_체크 = st.checkbox("신살표", value=True)
+    운성표_체크 = st.checkbox("12운성표", value=True)
+    지장간표_체크 = st.checkbox("지장간표", value=True)
+    합충형파해표_체크 = st.checkbox("합충형파해표", value=True)
+    궁성표_체크 = st.checkbox("궁성표", value=True)
+    육친표_체크 = st.checkbox("육친표", value=True)
+    납음오행표_체크 = st.checkbox("납음오행표", value=True)
+    격국표_체크 = st.checkbox("격국표", value=True)
+    공망표_체크 = st.checkbox("공망표", value=True)
+    
+    st.divider()
+    st.caption("v1.0 - 사주 이미지 생성기")
 
 # ============================================
 # 탭 구성
@@ -91,24 +123,21 @@ with tab1:
                 
                 # 음력/양력 변환
                 if 음양력 == "음력":
-                    # 음력 → 양력 변환
                     year, month, day = 음력_to_양력(input_year, input_month, input_day)
                     음력_str = f"{input_year}-{input_month:02d}-{input_day:02d}"
                     양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
                 else:
-                    # 양력 그대로
                     year, month, day = input_year, input_month, input_day
                     양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
-                    # 양력 → 음력 변환 (표시용)
                     음력_year, 음력_month, 음력_day = 양력_to_음력(year, month, day)
                     음력_str = f"{음력_year}-{음력_month:02d}-{음력_day:02d}"
                 
-                # 사주 계산 (항상 양력으로)
+                # 사주 계산
                 사주 = calc_사주(year, month, day, 시, 분)
                 
                 # 나이 계산
                 today = datetime.now()
-                나이 = today.year - year + 1  # 한국 나이
+                나이 = today.year - year + 1
                 
                 # 기본정보
                 기본정보 = {
@@ -119,334 +148,176 @@ with tab1:
                     '음력': 음력_str,
                 }
                 
-                # 성별 변환 (대운 계산용)
                 gender = '남' if 성별 == '남성' else '여'
-                
-                # 신살 계산
                 신살_data = calc_신살(사주, gender)
                 
-                # 이미지 생성 (신살 포함)
-                output_path = f"/tmp/{이름}_원국표.png"
-                create_원국표(사주, 기본정보, output_path, 신살_data, ZODIAC_PATH)
+                # 생성된 이미지 경로 저장
+                생성된_이미지 = {}
                 
-                # 대운 계산 및 이미지 생성
-                대운_data = calc_대운(year, month, day, 시, 분, gender)
-                대운_output_path = f"/tmp/{이름}_대운표.png"
-                create_대운표(대운_data, 기본정보, 대운_output_path)
+                # 체크된 이미지만 생성
+                if 원국표_체크:
+                    path = f"/tmp/{이름}_원국표.png"
+                    create_원국표(사주, 기본정보, path, 신살_data, ZODIAC_PATH)
+                    생성된_이미지['01_원국표'] = path
                 
-                st.success("✅ 이미지 생성 완료!")
+                if 대운표_체크:
+                    대운_data = calc_대운(year, month, day, 시, 분, gender)
+                    path = f"/tmp/{이름}_대운표.png"
+                    create_대운표(대운_data, 기본정보, path)
+                    생성된_이미지['02_대운표'] = path
                 
-                # 결과 표시 - 원국표
-                st.subheader("📊 원국표")
-                col1, col2 = st.columns([1, 1])
+                if 세운표_체크:
+                    세운_data = calc_세운(year, month, day, 시, 분)
+                    path = f"/tmp/{이름}_세운표.png"
+                    create_세운표(세운_data, 기본정보, path)
+                    생성된_이미지['03_세운표'] = path
                 
-                with col1:
-                    st.image(output_path, caption=f"{이름}님 원국표")
+                if 월운표_체크:
+                    월운_data = calc_월운(year, month, day, 시, 분)
+                    path = f"/tmp/{이름}_월운표.png"
+                    create_월운표(월운_data, 기본정보, path)
+                    생성된_이미지['04_월운표'] = path
                 
-                with col2:
-                    st.write("**사주 정보:**")
-                    st.write(f"- 년주: {사주['년주'][0]}{사주['년주'][1]}")
-                    st.write(f"- 월주: {사주['월주'][0]}{사주['월주'][1]}")
-                    st.write(f"- 일주: {사주['일주'][0]}{사주['일주'][1]}")
-                    st.write(f"- 시주: {사주['시주'][0]}{사주['시주'][1]}")
-                    st.write(f"- 오행: 목{사주['오행']['목']} 화{사주['오행']['화']} 토{사주['오행']['토']} 금{사주['오행']['금']} 수{사주['오행']['수']}")
-                    st.write(f"- 길신: {len(신살_data['길신'])}개, 흉신: {len(신살_data['흉신'])}개")
+                if 오행차트_체크:
+                    path = f"/tmp/{이름}_오행분석.png"
+                    create_오행차트(사주, 기본정보, path)
+                    생성된_이미지['05_오행분석'] = path
                 
-                # 원국표 다운로드 버튼
-                with open(output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 원국표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_원국표.png",
-                        mime="image/png",
-                        use_container_width=True
-                    )
+                if 십성표_체크:
+                    path = f"/tmp/{이름}_십성표.png"
+                    create_십성표(사주, 기본정보, path)
+                    생성된_이미지['06_십성표'] = path
                 
-                # 대운표 표시
-                st.subheader("📈 대운표")
-                st.image(대운_output_path, caption=f"{이름}님 대운표")
+                if 신살표_체크:
+                    path = f"/tmp/{이름}_신살표.png"
+                    create_신살표(신살_data, 기본정보, path)
+                    생성된_이미지['07_신살표'] = path
                 
-                방향 = "순행" if 대운_data['순행'] else "역행"
-                st.write(f"**대운 정보:** 대운수 {대운_data['대운수']}세, {방향}")
+                if 운성표_체크:
+                    path = f"/tmp/{이름}_12운성표.png"
+                    create_12운성표(사주, 기본정보, path)
+                    생성된_이미지['08_12운성표'] = path
                 
-                # 대운표 다운로드 버튼
-                with open(대운_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 대운표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_대운표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_대운표"
-                    )
+                if 지장간표_체크:
+                    path = f"/tmp/{이름}_지장간표.png"
+                    create_지장간표(사주, 기본정보, path)
+                    생성된_이미지['09_지장간표'] = path
                 
-                # 세운 계산 및 이미지 생성
-                세운_data = calc_세운(year, month, day, 시, 분)
-                세운_output_path = f"/tmp/{이름}_세운표.png"
-                create_세운표(세운_data, 기본정보, 세운_output_path)
+                if 합충형파해표_체크:
+                    path = f"/tmp/{이름}_합충형파해표.png"
+                    create_합충형파해표(사주, 기본정보, path)
+                    생성된_이미지['10_합충형파해표'] = path
                 
-                # 세운표 표시
-                st.subheader("📅 세운표 (10년)")
-                st.image(세운_output_path, caption=f"{이름}님 세운표")
+                if 궁성표_체크:
+                    path = f"/tmp/{이름}_궁성표.png"
+                    create_궁성표(사주, 기본정보, path)
+                    생성된_이미지['11_궁성표'] = path
                 
-                with open(세운_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 세운표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_세운표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_세운표"
-                    )
+                if 육친표_체크:
+                    path = f"/tmp/{이름}_육친표.png"
+                    create_육친표(사주, 기본정보, gender, path)
+                    생성된_이미지['12_육친표'] = path
                 
-                # 월운 계산 및 이미지 생성
-                월운_data = calc_월운(year, month, day, 시, 분)
-                월운_output_path = f"/tmp/{이름}_월운표.png"
-                create_월운표(월운_data, 기본정보, 월운_output_path)
+                if 납음오행표_체크:
+                    path = f"/tmp/{이름}_납음오행표.png"
+                    create_납음오행표(사주, 기본정보, path)
+                    생성된_이미지['13_납음오행표'] = path
                 
-                # 월운표 표시
-                st.subheader("🗓️ 월운표 (12개월)")
-                st.image(월운_output_path, caption=f"{이름}님 월운표")
+                if 격국표_체크:
+                    path = f"/tmp/{이름}_격국표.png"
+                    create_격국표(사주, 기본정보, path)
+                    생성된_이미지['14_격국표'] = path
                 
-                with open(월운_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 월운표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_월운표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_월운표"
-                    )
+                if 공망표_체크:
+                    path = f"/tmp/{이름}_공망표.png"
+                    create_공망표(사주, 기본정보, path)
+                    생성된_이미지['15_공망표'] = path
                 
-                # 오행 차트 이미지 생성
-                오행_output_path = f"/tmp/{이름}_오행차트.png"
-                create_오행차트(사주, 기본정보, 오행_output_path)
-                
-                # 오행 차트 표시
-                st.subheader("🔥 오행 분포")
-                st.image(오행_output_path, caption=f"{이름}님 오행 차트")
-                
-                with open(오행_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 오행차트 다운로드",
-                        data=f,
-                        file_name=f"{이름}_오행차트.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_오행차트"
-                    )
-                
-                # 십성표 이미지 생성
-                십성_output_path = f"/tmp/{이름}_십성표.png"
-                create_십성표(사주, 기본정보, 십성_output_path)
-                
-                # 십성표 표시
-                st.subheader("⭐ 십성 분석표")
-                st.image(십성_output_path, caption=f"{이름}님 십성표")
-                
-                with open(십성_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 십성표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_십성표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_십성표"
-                    )
-                
-                # 신살표 이미지 생성
-                신살_output_path = f"/tmp/{이름}_신살표.png"
-                create_신살표(신살_data, 기본정보, 신살_output_path)
-                
-                # 신살표 표시
-                st.subheader("🔮 신살 분석표")
-                st.image(신살_output_path, caption=f"{이름}님 신살표")
-                
-                with open(신살_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 신살표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_신살표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_신살표"
-                    )
+                st.success(f"✅ 이미지 생성 완료! ({len(생성된_이미지)}개)")
                 
                 # ============================================
-                # 추가 분석표 (9개)
+                # 전체 다운로드 버튼 (상단)
                 # ============================================
-                
-                # 12운성표
-                운성_output_path = f"/tmp/{이름}_12운성표.png"
-                create_12운성표(사주, 기본정보, 운성_output_path)
-                
-                st.subheader("🔄 12운성표")
-                st.image(운성_output_path, caption=f"{이름}님 12운성표")
-                
-                with open(운성_output_path, "rb") as f:
+                if len(생성된_이미지) > 0:
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                        for 파일명, 경로 in 생성된_이미지.items():
+                            zf.write(경로, f"{파일명}.png")
+                    
+                    zip_buffer.seek(0)
                     st.download_button(
-                        label="📥 12운성표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_12운성표.png",
-                        mime="image/png",
+                        label=f"📦 전체 다운로드 ({len(생성된_이미지)}개 ZIP)",
+                        data=zip_buffer,
+                        file_name=f"{이름}_사주분석.zip",
+                        mime="application/zip",
                         use_container_width=True,
-                        key="download_12운성표"
+                        key="download_전체_zip"
                     )
                 
-                # 지장간표
-                지장간_output_path = f"/tmp/{이름}_지장간표.png"
-                create_지장간표(사주, 기본정보, 지장간_output_path)
-                
-                st.subheader("📦 지장간표")
-                st.image(지장간_output_path, caption=f"{이름}님 지장간표")
-                
-                with open(지장간_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 지장간표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_지장간표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_지장간표"
-                    )
-                
-                # 합충형파해표
-                합충_output_path = f"/tmp/{이름}_합충형파해표.png"
-                create_합충형파해표(사주, 기본정보, 합충_output_path)
-                
-                st.subheader("⚡ 합충형파해표")
-                st.image(합충_output_path, caption=f"{이름}님 합충형파해표")
-                
-                with open(합충_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 합충형파해표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_합충형파해표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_합충형파해표"
-                    )
-                
-                # 궁성표
-                궁성_output_path = f"/tmp/{이름}_궁성표.png"
-                create_궁성표(사주, 기본정보, 궁성_output_path)
-                
-                st.subheader("🏛️ 궁성표")
-                st.image(궁성_output_path, caption=f"{이름}님 궁성표")
-                
-                with open(궁성_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 궁성표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_궁성표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_궁성표"
-                    )
-                
-                # 육친표
-                gender_code = '남' if 성별 == '남성' else '여'
-                육친_output_path = f"/tmp/{이름}_육친표.png"
-                create_육친표(사주, 기본정보, gender_code, 육친_output_path)
-                
-                st.subheader("👨‍👩‍👧‍👦 육친표")
-                st.image(육친_output_path, caption=f"{이름}님 육친표")
-                
-                with open(육친_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 육친표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_육친표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_육친표"
-                    )
-                
-                # 납음오행표
-                납음_output_path = f"/tmp/{이름}_납음오행표.png"
-                create_납음오행표(사주, 기본정보, 납음_output_path)
-                
-                st.subheader("🎵 납음오행표")
-                st.image(납음_output_path, caption=f"{이름}님 납음오행표")
-                
-                with open(납음_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 납음오행표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_납음오행표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_납음오행표"
-                    )
-                
-                # 격국표
-                격국_output_path = f"/tmp/{이름}_격국표.png"
-                create_격국표(사주, 기본정보, 격국_output_path)
-                
-                st.subheader("🎯 격국표")
-                st.image(격국_output_path, caption=f"{이름}님 격국표")
-                
-                with open(격국_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 격국표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_격국표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_격국표"
-                    )
-                
-                # 공망표
-                공망_output_path = f"/tmp/{이름}_공망표.png"
-                create_공망표(사주, 기본정보, 공망_output_path)
-                
-                st.subheader("🕳️ 공망표")
-                st.image(공망_output_path, caption=f"{이름}님 공망표")
-                
-                with open(공망_output_path, "rb") as f:
-                    st.download_button(
-                        label="📥 공망표 다운로드",
-                        data=f,
-                        file_name=f"{이름}_공망표.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_공망표"
-                    )
-                
-                # ============================================
-                # 전체 이미지 ZIP 다운로드
-                # ============================================
                 st.divider()
-                st.subheader("📦 전체 다운로드")
                 
-                # ZIP 파일 생성
-                zip_buffer = io.BytesIO()
-                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-                    zf.write(output_path, "01_원국표.png")
-                    zf.write(대운_output_path, "02_대운표.png")
-                    zf.write(세운_output_path, "03_세운표.png")
-                    zf.write(월운_output_path, "04_월운표.png")
-                    zf.write(오행_output_path, "05_오행분석.png")
-                    zf.write(십성_output_path, "06_십성표.png")
-                    zf.write(신살_output_path, "07_신살표.png")
-                    zf.write(운성_output_path, "08_12운성표.png")
-                    zf.write(지장간_output_path, "09_지장간표.png")
-                    zf.write(합충_output_path, "10_합충형파해표.png")
-                    zf.write(궁성_output_path, "11_궁성표.png")
-                    zf.write(육친_output_path, "12_육친표.png")
-                    zf.write(납음_output_path, "13_납음오행표.png")
-                    zf.write(격국_output_path, "14_격국표.png")
-                    zf.write(공망_output_path, "15_공망표.png")
+                # ============================================
+                # 개별 이미지 표시
+                # ============================================
+                if '01_원국표' in 생성된_이미지:
+                    st.subheader("📊 원국표")
+                    st.image(생성된_이미지['01_원국표'], caption=f"{이름}님 원국표")
                 
-                zip_buffer.seek(0)
-                st.download_button(
-                    label="📥 전체 이미지 다운로드 (ZIP)",
-                    data=zip_buffer,
-                    file_name=f"{이름}_사주분석_전체.zip",
-                    mime="application/zip",
-                    use_container_width=True,
-                    key="download_전체_zip"
-                )
+                if '02_대운표' in 생성된_이미지:
+                    st.subheader("📈 대운표")
+                    st.image(생성된_이미지['02_대운표'], caption=f"{이름}님 대운표")
+                
+                if '03_세운표' in 생성된_이미지:
+                    st.subheader("📅 세운표")
+                    st.image(생성된_이미지['03_세운표'], caption=f"{이름}님 세운표")
+                
+                if '04_월운표' in 생성된_이미지:
+                    st.subheader("🗓️ 월운표")
+                    st.image(생성된_이미지['04_월운표'], caption=f"{이름}님 월운표")
+                
+                if '05_오행분석' in 생성된_이미지:
+                    st.subheader("🔥 오행 분석")
+                    st.image(생성된_이미지['05_오행분석'], caption=f"{이름}님 오행분석")
+                
+                if '06_십성표' in 생성된_이미지:
+                    st.subheader("⭐ 십성표")
+                    st.image(생성된_이미지['06_십성표'], caption=f"{이름}님 십성표")
+                
+                if '07_신살표' in 생성된_이미지:
+                    st.subheader("🔮 신살표")
+                    st.image(생성된_이미지['07_신살표'], caption=f"{이름}님 신살표")
+                
+                if '08_12운성표' in 생성된_이미지:
+                    st.subheader("🔄 12운성표")
+                    st.image(생성된_이미지['08_12운성표'], caption=f"{이름}님 12운성표")
+                
+                if '09_지장간표' in 생성된_이미지:
+                    st.subheader("📋 지장간표")
+                    st.image(생성된_이미지['09_지장간표'], caption=f"{이름}님 지장간표")
+                
+                if '10_합충형파해표' in 생성된_이미지:
+                    st.subheader("⚡ 합충형파해표")
+                    st.image(생성된_이미지['10_합충형파해표'], caption=f"{이름}님 합충형파해표")
+                
+                if '11_궁성표' in 생성된_이미지:
+                    st.subheader("🏠 궁성표")
+                    st.image(생성된_이미지['11_궁성표'], caption=f"{이름}님 궁성표")
+                
+                if '12_육친표' in 생성된_이미지:
+                    st.subheader("👨‍👩‍👧‍👦 육친표")
+                    st.image(생성된_이미지['12_육친표'], caption=f"{이름}님 육친표")
+                
+                if '13_납음오행표' in 생성된_이미지:
+                    st.subheader("🎵 납음오행표")
+                    st.image(생성된_이미지['13_납음오행표'], caption=f"{이름}님 납음오행표")
+                
+                if '14_격국표' in 생성된_이미지:
+                    st.subheader("🎯 격국표")
+                    st.image(생성된_이미지['14_격국표'], caption=f"{이름}님 격국표")
+                
+                if '15_공망표' in 생성된_이미지:
+                    st.subheader("🕳️ 공망표")
+                    st.image(생성된_이미지['15_공망표'], caption=f"{이름}님 공망표")
 
 # ============================================
 # 탭2: 엑셀 일괄 처리
@@ -467,7 +338,6 @@ with tab2:
     }
     sample_df = pd.DataFrame(sample_data)
     
-    # 샘플 엑셀 다운로드
     buffer = io.BytesIO()
     sample_df.to_excel(buffer, index=False, engine='openpyxl')
     buffer.seek(0)
@@ -492,19 +362,16 @@ with tab2:
             progress = st.progress(0)
             status = st.empty()
             
-            # ZIP 파일 생성
             zip_buffer = io.BytesIO()
             
             with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
                 for idx, row in df.iterrows():
                     status.text(f"처리 중: {row['이름']} ({idx+1}/{len(df)})")
                     
-                    # 입력 날짜
                     input_year = int(row['생년'])
                     input_month = int(row['생월'])
                     input_day = int(row['생일'])
                     
-                    # 음력/양력 변환
                     if row['음양력'] == "음력":
                         year, month, day = 음력_to_양력(input_year, input_month, input_day)
                         음력_str = f"{input_year}-{input_month:02d}-{input_day:02d}"
@@ -515,13 +382,9 @@ with tab2:
                         음력_year, 음력_month, 음력_day = 양력_to_음력(year, month, day)
                         음력_str = f"{음력_year}-{음력_month:02d}-{음력_day:02d}"
                     
-                    # 사주 계산 (항상 양력으로)
                     사주 = calc_사주(year, month, day, int(row['시']), int(row['분']))
-                    
-                    # 나이 계산
                     나이 = datetime.now().year - year + 1
                     
-                    # 기본정보
                     기본정보 = {
                         '이름': row['이름'],
                         '성별': row['성별'],
@@ -530,98 +393,94 @@ with tab2:
                         '음력': 음력_str,
                     }
                     
-                    # 성별 변환
                     gender = '남' if row['성별'] == '남성' else '여'
-                    
-                    # 신살 계산
                     신살_data = calc_신살(사주, gender)
                     
-                    # 원국표 이미지 생성 (신살 포함)
-                    output_path = f"/tmp/{row['이름']}_원국표.png"
-                    create_원국표(사주, 기본정보, output_path, 신살_data, ZODIAC_PATH)
-                    
-                    # 대운 계산 및 이미지 생성
-                    대운_data = calc_대운(year, month, day, int(row['시']), int(row['분']), gender)
-                    대운_output_path = f"/tmp/{row['이름']}_대운표.png"
-                    create_대운표(대운_data, 기본정보, 대운_output_path)
-                    
-                    # 세운 계산 및 이미지 생성
-                    세운_data = calc_세운(year, month, day, int(row['시']), int(row['분']))
-                    세운_output_path = f"/tmp/{row['이름']}_세운표.png"
-                    create_세운표(세운_data, 기본정보, 세운_output_path)
-                    
-                    # 월운 계산 및 이미지 생성
-                    월운_data = calc_월운(year, month, day, int(row['시']), int(row['분']))
-                    월운_output_path = f"/tmp/{row['이름']}_월운표.png"
-                    create_월운표(월운_data, 기본정보, 월운_output_path)
-                    
-                    # 오행 차트 이미지 생성
-                    오행_output_path = f"/tmp/{row['이름']}_오행차트.png"
-                    create_오행차트(사주, 기본정보, 오행_output_path)
-                    
-                    # 십성표 이미지 생성
-                    십성_output_path = f"/tmp/{row['이름']}_십성표.png"
-                    create_십성표(사주, 기본정보, 십성_output_path)
-                    
-                    # 신살표 이미지 생성
-                    신살_output_path = f"/tmp/{row['이름']}_신살표.png"
-                    create_신살표(신살_data, 기본정보, 신살_output_path)
-                    
-                    # 12운성표
-                    운성_output_path = f"/tmp/{row['이름']}_12운성표.png"
-                    create_12운성표(사주, 기본정보, 운성_output_path)
-                    
-                    # 지장간표
-                    지장간_output_path = f"/tmp/{row['이름']}_지장간표.png"
-                    create_지장간표(사주, 기본정보, 지장간_output_path)
-                    
-                    # 합충형파해표
-                    합충_output_path = f"/tmp/{row['이름']}_합충형파해표.png"
-                    create_합충형파해표(사주, 기본정보, 합충_output_path)
-                    
-                    # 궁성표
-                    궁성_output_path = f"/tmp/{row['이름']}_궁성표.png"
-                    create_궁성표(사주, 기본정보, 궁성_output_path)
-                    
-                    # 육친표
-                    육친_output_path = f"/tmp/{row['이름']}_육친표.png"
-                    create_육친표(사주, 기본정보, gender, 육친_output_path)
-                    
-                    # 납음오행표
-                    납음_output_path = f"/tmp/{row['이름']}_납음오행표.png"
-                    create_납음오행표(사주, 기본정보, 납음_output_path)
-                    
-                    # 격국표
-                    격국_output_path = f"/tmp/{row['이름']}_격국표.png"
-                    create_격국표(사주, 기본정보, 격국_output_path)
-                    
-                    # 공망표
-                    공망_output_path = f"/tmp/{row['이름']}_공망표.png"
-                    create_공망표(사주, 기본정보, 공망_output_path)
-                    
-                    # ZIP에 추가 (폴더 구조)
                     folder_name = f"{row['이름']}_{row['생년']}-{row['생월']:02d}-{row['생일']:02d}"
-                    zf.write(output_path, f"{folder_name}/01_원국표.png")
-                    zf.write(대운_output_path, f"{folder_name}/02_대운표.png")
-                    zf.write(세운_output_path, f"{folder_name}/03_세운표.png")
-                    zf.write(월운_output_path, f"{folder_name}/04_월운표.png")
-                    zf.write(오행_output_path, f"{folder_name}/05_오행분석.png")
-                    zf.write(십성_output_path, f"{folder_name}/06_십성표.png")
-                    zf.write(신살_output_path, f"{folder_name}/07_신살표.png")
-                    zf.write(운성_output_path, f"{folder_name}/08_12운성표.png")
-                    zf.write(지장간_output_path, f"{folder_name}/09_지장간표.png")
-                    zf.write(합충_output_path, f"{folder_name}/10_합충형파해표.png")
-                    zf.write(궁성_output_path, f"{folder_name}/11_궁성표.png")
-                    zf.write(육친_output_path, f"{folder_name}/12_육친표.png")
-                    zf.write(납음_output_path, f"{folder_name}/13_납음오행표.png")
-                    zf.write(격국_output_path, f"{folder_name}/14_격국표.png")
-                    zf.write(공망_output_path, f"{folder_name}/15_공망표.png")
+                    
+                    # 체크된 이미지만 생성
+                    if 원국표_체크:
+                        path = f"/tmp/{row['이름']}_원국표.png"
+                        create_원국표(사주, 기본정보, path, 신살_data, ZODIAC_PATH)
+                        zf.write(path, f"{folder_name}/01_원국표.png")
+                    
+                    if 대운표_체크:
+                        대운_data = calc_대운(year, month, day, int(row['시']), int(row['분']), gender)
+                        path = f"/tmp/{row['이름']}_대운표.png"
+                        create_대운표(대운_data, 기본정보, path)
+                        zf.write(path, f"{folder_name}/02_대운표.png")
+                    
+                    if 세운표_체크:
+                        세운_data = calc_세운(year, month, day, int(row['시']), int(row['분']))
+                        path = f"/tmp/{row['이름']}_세운표.png"
+                        create_세운표(세운_data, 기본정보, path)
+                        zf.write(path, f"{folder_name}/03_세운표.png")
+                    
+                    if 월운표_체크:
+                        월운_data = calc_월운(year, month, day, int(row['시']), int(row['분']))
+                        path = f"/tmp/{row['이름']}_월운표.png"
+                        create_월운표(월운_data, 기본정보, path)
+                        zf.write(path, f"{folder_name}/04_월운표.png")
+                    
+                    if 오행차트_체크:
+                        path = f"/tmp/{row['이름']}_오행분석.png"
+                        create_오행차트(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/05_오행분석.png")
+                    
+                    if 십성표_체크:
+                        path = f"/tmp/{row['이름']}_십성표.png"
+                        create_십성표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/06_십성표.png")
+                    
+                    if 신살표_체크:
+                        path = f"/tmp/{row['이름']}_신살표.png"
+                        create_신살표(신살_data, 기본정보, path)
+                        zf.write(path, f"{folder_name}/07_신살표.png")
+                    
+                    if 운성표_체크:
+                        path = f"/tmp/{row['이름']}_12운성표.png"
+                        create_12운성표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/08_12운성표.png")
+                    
+                    if 지장간표_체크:
+                        path = f"/tmp/{row['이름']}_지장간표.png"
+                        create_지장간표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/09_지장간표.png")
+                    
+                    if 합충형파해표_체크:
+                        path = f"/tmp/{row['이름']}_합충형파해표.png"
+                        create_합충형파해표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/10_합충형파해표.png")
+                    
+                    if 궁성표_체크:
+                        path = f"/tmp/{row['이름']}_궁성표.png"
+                        create_궁성표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/11_궁성표.png")
+                    
+                    if 육친표_체크:
+                        path = f"/tmp/{row['이름']}_육친표.png"
+                        create_육친표(사주, 기본정보, gender, path)
+                        zf.write(path, f"{folder_name}/12_육친표.png")
+                    
+                    if 납음오행표_체크:
+                        path = f"/tmp/{row['이름']}_납음오행표.png"
+                        create_납음오행표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/13_납음오행표.png")
+                    
+                    if 격국표_체크:
+                        path = f"/tmp/{row['이름']}_격국표.png"
+                        create_격국표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/14_격국표.png")
+                    
+                    if 공망표_체크:
+                        path = f"/tmp/{row['이름']}_공망표.png"
+                        create_공망표(사주, 기본정보, path)
+                        zf.write(path, f"{folder_name}/15_공망표.png")
                     
                     progress.progress((idx + 1) / len(df))
             
             status.text("✅ 완료!")
             
-            # ZIP 다운로드
             zip_buffer.seek(0)
             st.download_button(
                 label="📥 전체 다운로드 (ZIP)",
@@ -630,16 +489,3 @@ with tab2:
                 mime="application/zip",
                 use_container_width=True
             )
-
-# ============================================
-# 사이드바
-# ============================================
-with st.sidebar:
-    st.header("🔮 서비스 선택")
-    서비스 = st.radio(
-        "생성할 이미지 종류",
-        ["사주", "타로 (준비중)", "연애상담 (준비중)"]
-    )
-    
-    st.divider()
-    st.caption("v1.0 - 사주 이미지 생성기")
