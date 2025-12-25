@@ -86,7 +86,7 @@ with st.sidebar:
 # ============================================
 # 탭 구성
 # ============================================
-tab1, tab2 = st.tabs(["📝 개별 입력", "📊 엑셀 일괄 처리"])
+tab1, tab2, tab3 = st.tabs(["📝 개별 입력", "📊 엑셀 일괄 처리", "📅 일진표"])
 
 # ============================================
 # 탭1: 개별 입력
@@ -495,3 +495,80 @@ with tab2:
                 mime="application/zip",
                 use_container_width=True
             )
+
+# ============================================
+# 탭3: 일진표
+# ============================================
+with tab3:
+    st.subheader("📅 일진표 생성")
+    st.write("12개월치 일진표를 생성합니다.")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        일진_이름 = st.text_input("이름 (선택)", placeholder="홍길동", key="ilzin_name")
+    
+    with col2:
+        일진_년도 = st.number_input("년도", min_value=1900, max_value=2100, value=datetime.now().year, key="ilzin_year")
+    
+    # 시작 월 선택
+    시작월 = st.selectbox("시작 월", range(1, 13), index=datetime.now().month - 1, key="ilzin_start_month")
+    
+    st.divider()
+    
+    if st.button("📅 일진표 생성", type="primary", use_container_width=True, key="btn_ilzin"):
+        with st.spinner("일진표 생성 중..."):
+            
+            # 기본정보 (이름이 있을 경우)
+            기본정보 = {'이름': 일진_이름} if 일진_이름 else None
+            
+            # 12개월치 생성
+            생성된_일진 = {}
+            
+            for i in range(12):
+                # 월 계산 (시작월부터 12개월)
+                target_month = 시작월 + i
+                target_year = 일진_년도
+                
+                if target_month > 12:
+                    target_month -= 12
+                    target_year += 1
+                
+                파일명 = f"{target_year}년_{target_month:02d}월_일진표"
+                path = f"/tmp/{파일명}.png"
+                
+                create_일진표(target_year, target_month, 기본정보, path)
+                생성된_일진[파일명] = path
+            
+            st.success(f"✅ 일진표 12개월 생성 완료!")
+            
+            # ============================================
+            # 전체 다운로드 버튼 (상단)
+            # ============================================
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                for 파일명, 경로 in 생성된_일진.items():
+                    zf.write(경로, f"{파일명}.png")
+            
+            zip_buffer.seek(0)
+            
+            다운로드_파일명 = f"{일진_이름}_일진표_12개월.zip" if 일진_이름 else f"{일진_년도}년_일진표_12개월.zip"
+            
+            st.download_button(
+                label="📦 전체 다운로드 (12개월 ZIP)",
+                data=zip_buffer,
+                file_name=다운로드_파일명,
+                mime="application/zip",
+                use_container_width=True,
+                key="download_일진_zip"
+            )
+            
+            st.divider()
+            
+            # ============================================
+            # 개별 월 이미지 표시
+            # ============================================
+            for 파일명, 경로 in 생성된_일진.items():
+                st.subheader(f"📅 {파일명.replace('_', ' ')}")
+                st.image(경로, caption=파일명)
+

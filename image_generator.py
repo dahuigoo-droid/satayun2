@@ -2446,56 +2446,81 @@ def create_공망표(사주_data, 기본정보, output_path="공망표.png"):
 # ============================================
 # 일진표 (달력) 이미지 생성
 # ============================================
-def create_일진표(year, month, output_path="일진표.png"):
-    """월별 일진 달력 이미지"""
+def create_일진표(year, month, 기본정보=None, output_path="일진표.png"):
+    """월별 일진 달력 이미지 (세운표 사이즈)"""
     
     from saju_calculator import calc_일진표
     import calendar
     
     일진_데이터 = calc_일진표(year, month)
     
-    width = 750
-    height = 455
+    # 셀 크기
+    cell_width = 120
+    cell_height = 72
+    
+    # 테이블 크기 계산
+    table_width = cell_width * 7
+    
+    # 주 수 계산
+    cal = calendar.Calendar()
+    weeks = list(cal.monthdayscalendar(year, month))
+    num_weeks = len(weeks)
+    
+    header_height = 28
+    table_height = header_height + (cell_height * num_weeks)
+    
+    # 여백 설정
+    margin_x = 25
+    margin_top = 70
+    margin_bottom = 15
+    
+    # 이미지 크기 (테이블에 맞춤)
+    width = table_width + (margin_x * 2)
+    height = margin_top + table_height + margin_bottom
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(18)
-    font_header = get_font(12, bold=True)
-    font_medium = get_font(11)
-    font_small = get_font(9)
-    font_tiny = get_font(8)
+    # 폰트 크기 키움
+    font_title = get_font(20, bold=True)
+    font_subtitle = get_font(13)
+    font_header = get_font(13, bold=True)
+    font_day = get_font(15, bold=True)
+    font_ganji = get_font(13)
+    font_hanja = get_font(10)
+    font_lunar = get_font(9)
     
-    draw.text((width // 2, 22), f"{year}년 {month}월 일진표", font=font_title, fill='#333333', anchor='mm')
-    draw.text((width // 2, 45), f"월주: {일진_데이터['월주']}", font=font_medium, fill='#1565C0', anchor='mm')
+    # 상단 제목
+    title_text = f"{year}년 {month}월 일진표"
+    if 기본정보 and 기본정보.get('이름'):
+        title_text = f"{기본정보['이름']} - {year}년 {month}월 일진표"
+    
+    draw.text((width // 2, 22), title_text, font=font_title, fill='#333333', anchor='mm')
+    draw.text((width // 2, 48), f"월주: {일진_데이터['월주']}", font=font_subtitle, fill='#1565C0', anchor='mm')
     
     요일 = ['일', '월', '화', '수', '목', '금', '토']
     요일_색상 = ['#C62828', '#333333', '#333333', '#333333', '#333333', '#333333', '#1565C0']
     
-    cell_width = 100
-    cell_height = 70
-    start_x = 30
-    start_y = 70
+    start_x = margin_x
+    start_y = margin_top
     
+    # 요일 헤더
     for i, (요일명, 색상) in enumerate(zip(요일, 요일_색상)):
         x = start_x + i * cell_width
-        draw.rectangle([x, start_y, x + cell_width, start_y + 22], fill='#F5F5F5', outline='#E0E0E0')
-        draw.text((x + cell_width // 2, start_y + 11), 요일명, font=font_header, fill=색상, anchor='mm')
+        draw.rectangle([x, start_y, x + cell_width, start_y + header_height], fill='#F5F5F5', outline='#CCCCCC', width=1)
+        draw.text((x + cell_width // 2, start_y + header_height // 2), 요일명, font=font_header, fill=색상, anchor='mm')
     
-    cal = calendar.Calendar()
-    weeks = list(cal.monthdayscalendar(year, month))
-    
-    current_y = start_y + 22
+    current_y = start_y + header_height
     
     for week in weeks:
         for day_idx, day in enumerate(week):
             x = start_x + day_idx * cell_width
             
             if day == 0:
-                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height], fill='#FAFAFA', outline='#E0E0E0')
+                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height], fill='#FAFAFA', outline='#CCCCCC', width=1)
             else:
                 bg_color = '#FFEBEE' if day_idx == 0 else '#E3F2FD' if day_idx == 6 else '#FFFFFF'
-                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height], fill=bg_color, outline='#E0E0E0')
+                draw.rectangle([x, current_y, x + cell_width, current_y + cell_height], fill=bg_color, outline='#CCCCCC', width=1)
                 
                 day_data = None
                 for d in 일진_데이터['days']:
@@ -2505,11 +2530,15 @@ def create_일진표(year, month, output_path="일진표.png"):
                 
                 if day_data:
                     날짜_색상 = '#C62828' if day_idx == 0 else '#1565C0' if day_idx == 6 else '#333333'
-                    draw.text((x + 8, current_y + 12), str(day), font=font_header, fill=날짜_색상, anchor='lm')
-                    draw.text((x + cell_width // 2, current_y + 32), day_data['일진'], font=font_medium, fill='#333333', anchor='mm')
-                    draw.text((x + cell_width // 2, current_y + 48), f"{day_data['천간_한자']}{day_data['지지_한자']}", 
-                              font=font_small, fill='#999999', anchor='mm')
-                    draw.text((x + cell_width - 8, current_y + 12), day_data['음력'], font=font_tiny, fill='#999999', anchor='rm')
+                    # 날짜 (왼쪽 상단)
+                    draw.text((x + 8, current_y + 14), str(day), font=font_day, fill=날짜_색상, anchor='lm')
+                    # 음력 (오른쪽 상단)
+                    draw.text((x + cell_width - 8, current_y + 14), day_data['음력'], font=font_lunar, fill='#999999', anchor='rm')
+                    # 일진 간지 (중앙)
+                    draw.text((x + cell_width // 2, current_y + 38), day_data['일진'], font=font_ganji, fill='#333333', anchor='mm')
+                    # 한자 (하단)
+                    draw.text((x + cell_width // 2, current_y + 56), f"{day_data['천간_한자']}{day_data['지지_한자']}", 
+                              font=font_hanja, fill='#888888', anchor='mm')
         
         current_y += cell_height
     
