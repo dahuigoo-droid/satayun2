@@ -2457,9 +2457,9 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
     
     용신_data = calc_용신(사주_data)
     
-    # 이미지 크기 (하단 여백 최소화)
+    # 이미지 크기 (상하 여백 동일: 약 13px)
     width = 580
-    height = 395
+    height = 383
     
     img = Image.new('RGB', (width, height), '#FFFFFF')
     draw = ImageDraw.Draw(img)
@@ -2608,11 +2608,11 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
                   font=font_desc, fill='#666666', anchor='mm')
     
     # ========== 최종 순환 구조 ==========
-    cycle_y = 신_y + 신_box_height + 18
-    draw.rectangle([20, cycle_y, width - 20, cycle_y + 50],
+    cycle_y = 신_y + 신_box_height + 12
+    draw.rectangle([20, cycle_y, width - 20, cycle_y + 45],
                    fill='#E8F5E9', outline='#A5D6A7')
     
-    draw.text((width // 2, cycle_y + 14), "● 최종 순환 구조", 
+    draw.text((width // 2, cycle_y + 12), "● 최종 순환 구조", 
               font=font_header, fill='#2E7D32', anchor='mm')
     
     # 순환 구조 생성 (용신 → 희신 → 한신 → 용신)
@@ -2631,17 +2631,8 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
         순환_parts.append(용신_오행)
     
     순환_str = ' → '.join(순환_parts) if 순환_parts else '순환 없음'
-    draw.text((width // 2, cycle_y + 35), 순환_str, 
+    draw.text((width // 2, cycle_y + 32), 순환_str, 
               font=font_medium, fill='#1B5E20', anchor='mm')
-    
-    # ========== 하단 키워드 요약 ==========
-    keyword_y = cycle_y + 58
-    
-    용신_키워드 = 용신_data.get('용신_키워드', '')
-    if 용신_키워드:
-        키워드_short = 용신_키워드[:40] + '...' if len(용신_키워드) > 40 else 용신_키워드
-        draw.text((width // 2, keyword_y), f"용신 키워드: {키워드_short}", 
-                  font=font_desc, fill='#666666', anchor='mm')
     
     img.save(output_path, 'PNG')
     return output_path
