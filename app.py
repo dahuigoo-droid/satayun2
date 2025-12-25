@@ -412,6 +412,41 @@ with tab1:
                         use_container_width=True,
                         key="download_공망표"
                     )
+                
+                # ============================================
+                # 전체 이미지 ZIP 다운로드
+                # ============================================
+                st.divider()
+                st.subheader("📦 전체 다운로드")
+                
+                # ZIP 파일 생성
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    zf.write(output_path, "01_원국표.png")
+                    zf.write(대운_output_path, "02_대운표.png")
+                    zf.write(세운_output_path, "03_세운표.png")
+                    zf.write(월운_output_path, "04_월운표.png")
+                    zf.write(오행_output_path, "05_오행분석.png")
+                    zf.write(십성_output_path, "06_십성표.png")
+                    zf.write(신살_output_path, "07_신살표.png")
+                    zf.write(운성_output_path, "08_12운성표.png")
+                    zf.write(지장간_output_path, "09_지장간표.png")
+                    zf.write(합충_output_path, "10_합충형파해표.png")
+                    zf.write(궁성_output_path, "11_궁성표.png")
+                    zf.write(육친_output_path, "12_육친표.png")
+                    zf.write(납음_output_path, "13_납음오행표.png")
+                    zf.write(격국_output_path, "14_격국표.png")
+                    zf.write(공망_output_path, "15_공망표.png")
+                
+                zip_buffer.seek(0)
+                st.download_button(
+                    label="📥 전체 이미지 다운로드 (ZIP)",
+                    data=zip_buffer,
+                    file_name=f"{이름}_사주분석_전체.zip",
+                    mime="application/zip",
+                    use_container_width=True,
+                    key="download_전체_zip"
+                )
 
 # ============================================
 # 탭2: 엑셀 일괄 처리
@@ -605,25 +640,6 @@ with st.sidebar:
         "생성할 이미지 종류",
         ["사주", "타로 (준비중)", "연애상담 (준비중)"]
     )
-    
-    st.divider()
-    
-    st.header("📊 생성할 이미지")
-    원국표_체크 = st.checkbox("원국표", value=True)
-    대운표_체크 = st.checkbox("대운표", value=True)
-    세운표_체크 = st.checkbox("세운표", value=True)
-    월운표_체크 = st.checkbox("월운표", value=True)
-    오행차트_체크 = st.checkbox("오행 분석", value=True)
-    십성표_체크 = st.checkbox("십성표", value=True)
-    신살표_체크 = st.checkbox("신살표", value=True)
-    운성표_체크 = st.checkbox("12운성표", value=True)
-    지장간표_체크 = st.checkbox("지장간표", value=True)
-    합충형파해표_체크 = st.checkbox("합충형파해표", value=True)
-    궁성표_체크 = st.checkbox("궁성표", value=True)
-    육친표_체크 = st.checkbox("육친표", value=True)
-    납음오행표_체크 = st.checkbox("납음오행표", value=True)
-    격국표_체크 = st.checkbox("격국표", value=True)
-    공망표_체크 = st.checkbox("공망표", value=True)
     
     st.divider()
     st.caption("v1.0 - 사주 이미지 생성기")
