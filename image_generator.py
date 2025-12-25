@@ -996,9 +996,8 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
     오행 = 사주_data['오행']
     
     # 이미지 크기
-    width = 850
-    height = 420
-    margin = 25
+    width = 800
+    height = 400
     
     # 이미지 생성
     img = Image.new('RGB', (width, height), '#FFFFFF')
@@ -1017,19 +1016,20 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
     }
     
     # ========== 상단 제목 ==========
-    draw.text((width // 2, 22), f"{기본정보['이름']}님 오행 분석", 
+    draw.text((width // 2, 20), f"{기본정보['이름']}님 오행 분석", 
               font=font_title, fill='#333333', anchor='mm')
     
     # ========== 좌측: 막대 그래프 ==========
-    left_section_width = 380
-    chart_x = margin + 30
-    chart_y = 70
-    chart_height = 180
-    bar_width = 50
-    gap = 15
+    left_center_x = width // 4  # 좌측 1/4 지점
+    chart_width_total = 280  # 차트 전체 폭
+    chart_x = left_center_x - chart_width_total // 2
+    chart_y = 90  # 차트 시작 y (제목과 충분히 떨어지게)
+    chart_height = 200  # 차트 높이 확대
+    bar_width = 45
+    gap = 11
     
-    # 섹션 제목
-    draw.text((chart_x + 130, 50), "[ 오행 분포 ]", font=font_medium, fill='#666666', anchor='mm')
+    # 섹션 제목 (차트 위에 충분한 간격)
+    draw.text((left_center_x, 50), "[ 오행 분포 ]", font=font_medium, fill='#666666', anchor='mm')
     
     오행_목록 = ['목', '화', '토', '금', '수']
     max_val = max(오행.values()) if max(오행.values()) > 0 else 1
@@ -1038,8 +1038,8 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
         x = chart_x + i * (bar_width + gap)
         값 = 오행[오행명]
         
-        # 막대 높이 계산
-        bar_height = int((값 / max_val) * chart_height) if 값 > 0 else 8
+        # 막대 높이 계산 (최대 높이의 85%까지만 사용하여 제목과 겹침 방지)
+        bar_height = int((값 / max_val) * chart_height * 0.85) if 값 > 0 else 8
         
         # 막대 그리기 (라운드)
         bar_y = chart_y + chart_height - bar_height
@@ -1047,47 +1047,61 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
                                radius=5, fill=chart_colors[오행명], outline='#666666', width=2)
         
         # 값 표시
-        draw.text((x + bar_width // 2, bar_y - 15),
+        draw.text((x + bar_width // 2, bar_y - 12),
                   str(값), font=font_large, fill='#333333', anchor='mm')
         
         # 오행명 표시
-        draw.text((x + bar_width // 2, chart_y + chart_height + 20),
+        draw.text((x + bar_width // 2, chart_y + chart_height + 18),
                   오행명, font=font_medium, fill='#333333', anchor='mm')
     
     # 요약 정보
     total = sum(오행.values())
-    draw.text((chart_x + 130, chart_y + chart_height + 55),
+    draw.text((left_center_x, chart_y + chart_height + 45),
               f"총 {total}개 | 일간: {일간}({일간_오행})",
               font=font_small, fill='#666666', anchor='mm')
     
-    # 강한/약한 오행
+    # 강한/약한 오행 (0개는 "무"로 표시)
     sorted_오행 = sorted(오행.items(), key=lambda x: x[1], reverse=True)
     강한 = sorted_오행[0][0] if sorted_오행[0][1] > 0 else "-"
-    약한 = sorted_오행[-1][0]
-    draw.text((chart_x + 130, chart_y + chart_height + 78),
-              f"강: {강한} | 약: {약한}",
-              font=font_small, fill='#888888', anchor='mm')
+    
+    # 1개 이상 있는 것 중 가장 적은 오행
+    존재하는_오행 = [(k, v) for k, v in sorted_오행 if v > 0]
+    if 존재하는_오행:
+        약한 = 존재하는_오행[-1][0]
+    else:
+        약한 = "-"
+    
+    # 0개인 오행 찾기
+    없는_오행 = [k for k, v in 오행.items() if v == 0]
+    
+    if 없는_오행:
+        draw.text((left_center_x, chart_y + chart_height + 65),
+                  f"강: {강한} | 약: {약한} | 무: {','.join(없는_오행)}",
+                  font=font_small, fill='#888888', anchor='mm')
+    else:
+        draw.text((left_center_x, chart_y + chart_height + 65),
+                  f"강: {강한} | 약: {약한}",
+                  font=font_small, fill='#888888', anchor='mm')
     
     # ========== 우측: 상생상극도 ==========
-    right_x = left_section_width + 60
-    center_x = right_x + 190
-    center_y = height // 2 + 15
-    radius = 120
-    circle_radius = 38
+    right_center_x = width * 3 // 4  # 우측 3/4 지점
+    center_y = height // 2 + 20
+    radius = 110
+    circle_radius = 35
     
     # 섹션 제목
-    draw.text((center_x, 50), "[ 상생상극 관계 ]", font=font_medium, fill='#666666', anchor='mm')
+    draw.text((right_center_x, 50), "[ 상생상극 관계 ]", font=font_medium, fill='#666666', anchor='mm')
     
     # 범례
-    draw.text((center_x - 55, height - 35), "→ 상생", font=font_small, fill='#1565C0', anchor='mm')
-    draw.text((center_x + 55, height - 35), "→ 상극", font=font_small, fill='#C62828', anchor='mm')
+    draw.text((right_center_x - 50, height - 20), "→ 상생", font=font_small, fill='#1565C0', anchor='mm')
+    draw.text((right_center_x + 50, height - 20), "→ 상극", font=font_small, fill='#C62828', anchor='mm')
     
     # 오행 위치 계산
     오행_배치 = ['화', '토', '금', '수', '목']
     positions = {}
     for i, 오행명 in enumerate(오행_배치):
         angle = math.radians(-90 + i * 72)
-        x = center_x + radius * math.cos(angle)
+        x = right_center_x + radius * math.cos(angle)
         y = center_y + radius * math.sin(angle)
         positions[오행명] = (x, y)
     
@@ -1118,7 +1132,7 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
         x1, y1 = positions[생]
         x2, y2 = positions[받]
         mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
-        offset_angle = math.atan2(mid_y - center_y, mid_x - center_x)
+        offset_angle = math.atan2(mid_y - center_y, mid_x - right_center_x)
         offset_dist = 25
         ctrl_x = mid_x + offset_dist * math.cos(offset_angle)
         ctrl_y = mid_y + offset_dist * math.sin(offset_angle)
