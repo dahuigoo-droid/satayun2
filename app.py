@@ -95,14 +95,30 @@ tab1, tab2, tab3 = st.tabs(["📝 개별 입력", "📊 엑셀 일괄 처리", "
 with tab1:
     st.subheader("고객 정보 입력")
     
+    # session_state 초기화
+    if 'input_이름' not in st.session_state:
+        st.session_state.input_이름 = ""
+    if 'input_생년월일' not in st.session_state:
+        st.session_state.input_생년월일 = datetime(1990, 1, 1)
+    if 'input_시' not in st.session_state:
+        st.session_state.input_시 = 12
+    if 'input_분' not in st.session_state:
+        st.session_state.input_분 = 0
+    if 'input_성별' not in st.session_state:
+        st.session_state.input_성별 = "남성"
+    if 'input_음양력' not in st.session_state:
+        st.session_state.input_음양력 = "양력"
+    if '생성된_이미지' not in st.session_state:
+        st.session_state.생성된_이미지 = {}
+    
     col1, col2 = st.columns(2)
     
     with col1:
-        이름 = st.text_input("이름", placeholder="홍길동")
-        성별 = st.radio("성별", ["남성", "여성"], horizontal=True)
+        이름 = st.text_input("이름", value=st.session_state.input_이름, placeholder="홍길동", key="name_input")
+        성별 = st.radio("성별", ["남성", "여성"], horizontal=True, index=0 if st.session_state.input_성별 == "남성" else 1)
         생년월일 = st.date_input(
             "생년월일", 
-            datetime(1990, 1, 1),
+            st.session_state.input_생년월일,
             min_value=datetime(1900, 1, 1),
             max_value=datetime(2030, 12, 31)
         )
@@ -110,15 +126,35 @@ with tab1:
     with col2:
         시간_col1, 시간_col2 = st.columns(2)
         with 시간_col1:
-            시 = st.number_input("시", min_value=0, max_value=23, value=12)
+            시 = st.number_input("시", min_value=0, max_value=23, value=st.session_state.input_시)
         with 시간_col2:
-            분 = st.number_input("분", min_value=0, max_value=59, value=0)
+            분 = st.number_input("분", min_value=0, max_value=59, value=st.session_state.input_분)
         
-        음양력 = st.radio("음력/양력", ["양력", "음력"], horizontal=True)
+        음양력 = st.radio("음력/양력", ["양력", "음력"], horizontal=True, index=0 if st.session_state.input_음양력 == "양력" else 1)
     
     st.divider()
     
-    if st.button("🎯 이미지 생성", type="primary", use_container_width=True):
+    # 버튼 영역 (이미지 생성 + 초기화)
+    btn_col1, btn_col2 = st.columns([3, 1])
+    
+    with btn_col1:
+        생성_버튼 = st.button("🎯 이미지 생성", type="primary", use_container_width=True)
+    
+    with btn_col2:
+        초기화_버튼 = st.button("🔄 초기화", type="secondary", use_container_width=True)
+    
+    # 초기화 버튼 클릭 시
+    if 초기화_버튼:
+        st.session_state.input_이름 = ""
+        st.session_state.input_생년월일 = datetime(1990, 1, 1)
+        st.session_state.input_시 = 12
+        st.session_state.input_분 = 0
+        st.session_state.input_성별 = "남성"
+        st.session_state.input_음양력 = "양력"
+        st.session_state.생성된_이미지 = {}
+        st.rerun()
+    
+    if 생성_버튼:
         if not 이름:
             st.error("이름을 입력해주세요.")
         else:
@@ -158,7 +194,7 @@ with tab1:
                 gender = '남' if 성별 == '남성' else '여'
                 신살_data = calc_신살(사주, gender)
                 
-                # 생성된 이미지 경로 저장
+                # 생성된 이미지 경로 저장 (session_state에 저장)
                 생성된_이미지 = {}
                 
                 # 체크된 이미지만 생성
