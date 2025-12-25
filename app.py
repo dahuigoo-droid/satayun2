@@ -124,7 +124,8 @@ with tab1:
                 
                 # 이미지 생성 (신살 포함)
                 output_path = f"/tmp/{이름}_원국표.png"
-                create_원국표(사주, 기본정보, output_path, 신살_data)
+                zodiac_path = 'images/zodiac'
+                create_원국표(사주, 기본정보, output_path, 신살, zodiac_path)
                 
                 # 대운 계산 및 이미지 생성
                 대운_data = calc_대운(year, month, day, 시, 분, gender)
