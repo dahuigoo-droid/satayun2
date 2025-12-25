@@ -537,7 +537,7 @@ with tab3:
                 파일명 = f"{target_year}년_{target_month:02d}월_일진표"
                 path = f"/tmp/{파일명}.png"
                 
-                create_일진표(target_year, target_month, 기본정보, path)
+                create_일진표(target_year, target_month, 기본정보=기본정보, output_path=path)
                 생성된_일진[파일명] = path
             
             st.success(f"✅ 일진표 12개월 생성 완료!")
