@@ -16,6 +16,9 @@ from image_generator import (
     create_격국표, create_공망표, create_일진표
 )
 
+# 12지 이미지 경로 설정
+ZODIAC_PATH = os.path.join(os.path.dirname(__file__), 'images', 'zodiac')
+
 # ============================================
 # 음력 → 양력 변환 함수
 # ============================================
@@ -124,8 +127,7 @@ with tab1:
                 
                 # 이미지 생성 (신살 포함)
                 output_path = f"/tmp/{이름}_원국표.png"
-                zodiac_path = 'images/zodiac'
-                create_원국표(사주, 기본정보, output_path, 신살_data, zodiac_path)
+                create_원국표(사주, 기본정보, output_path, 신살_data, ZODIAC_PATH)
                 
                 # 대운 계산 및 이미지 생성
                 대운_data = calc_대운(year, month, day, 시, 분, gender)
@@ -501,7 +503,7 @@ with tab2:
                     
                     # 원국표 이미지 생성 (신살 포함)
                     output_path = f"/tmp/{row['이름']}_원국표.png"
-                    create_원국표(사주, 기본정보, output_path, 신살_data)
+                    create_원국표(사주, 기본정보, output_path, 신살_data, ZODIAC_PATH)
                     
                     # 대운 계산 및 이미지 생성
                     대운_data = calc_대운(year, month, day, int(row['시']), int(row['분']), gender)
