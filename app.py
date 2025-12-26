@@ -493,6 +493,16 @@ with tab1:
         st.divider()
         st.subheader(f"📋 {st.session_state.gpt_이름}님 GPT용 데이터")
         
+        # 스크롤 가능한 코드 블록 (max-height 300px)
+        st.markdown("""
+        <style>
+        .stCodeBlock {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        
         # 복사 버튼이 포함된 코드 블록
         st.code(st.session_state.gpt_text, language=None)
         
