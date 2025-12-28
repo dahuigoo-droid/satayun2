@@ -24,9 +24,9 @@ def get_font(size, bold=False):
     """한글+한자 폰트 로드 (Noto Sans CJK 우선)"""
     if bold:
         font_paths = [
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc",  # 가장 굵은 폰트
             "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
             "/usr/share/fonts/opentype/noto/NotoSansCJK-Medium.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
             "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
         ]
     else:
