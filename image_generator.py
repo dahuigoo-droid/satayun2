@@ -294,9 +294,9 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
                                radius=5, fill=bg_color, outline=border_color, width=border_width)
         
         한자 = 천간_한자[천간]
-        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 12),
                   f"{천간}({한자})", font=font_large, fill=text_color, anchor='mm')
-        draw.text((x + cell_width // 2, current_y + cell_height_main - 20),
+        draw.text((x + cell_width // 2, current_y + cell_height_main - 12),
                   오행, font=font_small, fill=text_color, anchor='mm')
     
     current_y += cell_height_main
@@ -321,9 +321,9 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
         
         한자 = 지지_한자[지지]
         동물 = 지지_동물[지지]
-        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+        draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 12),
                   f"{지지}({한자})", font=font_large, fill=text_color, anchor='mm')
-        draw.text((x + cell_width // 2, current_y + cell_height_main - 20),
+        draw.text((x + cell_width // 2, current_y + cell_height_main - 12),
                   f"{동물} {오행}", font=font_small, fill=text_color, anchor='mm')
     
     current_y += cell_height_main
