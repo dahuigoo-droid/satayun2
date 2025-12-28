@@ -492,7 +492,7 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
     content_width = label_width + (cell_width * cols_per_row)
     width = content_width + (margin * 2)
     
-    row_height = cell_height_small + cell_height_main * 2 + cell_height_small
+    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2  # 12운성 + 12신살
     title_area = 70
     row_gap = 25
     vertical_margin = 35
@@ -600,6 +600,22 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
             draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
                       대운['12운성'], font=font_medium, fill='#555555', anchor='mm')
         
+        current_y += cell_height_small
+        
+        # 12신살 행
+        draw.rounded_rectangle([start_x, current_y, start_x + label_width, current_y + cell_height_small],
+                               radius=5, fill='#FAFAFA', outline=border_color, width=border_width)
+        draw.text((start_x + label_width // 2, current_y + cell_height_small // 2),
+                  "12신살", font=font_small, fill='#666666', anchor='mm')
+        
+        for i, 대운 in enumerate(대운_list):
+            x = start_x + label_width + i * cell_width
+            신살 = 대운.get('12신살', '-')
+            draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                                   radius=5, fill='#FFF8E1', outline=border_color, width=border_width)
+            draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                      신살, font=font_medium, fill='#E65100', anchor='mm')
+        
         return current_y + cell_height_small
     
     # 테이블 시작
@@ -643,7 +659,7 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
     content_width = label_width + (cell_width * cols_per_row)
     width = content_width + (margin * 2)
     
-    row_height = cell_height_small + cell_height_main * 2
+    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2  # 12운성 + 12신살 추가
     title_area = 70
     row_gap = 25
     vertical_margin = 35
@@ -735,7 +751,39 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
             draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
                       세운['지지_십성'], font=font_small, fill=text_color, anchor='mm')
         
-        return current_y + cell_height_main
+        current_y += cell_height_main
+        
+        # 12운성 행
+        draw.rounded_rectangle([start_x, current_y, start_x + label_width, current_y + cell_height_small],
+                               radius=5, fill='#FAFAFA', outline=border_color, width=border_width)
+        draw.text((start_x + label_width // 2, current_y + cell_height_small // 2),
+                  "12운성", font=font_small, fill='#666666', anchor='mm')
+        
+        for i, 세운 in enumerate(세운_list):
+            x = start_x + label_width + i * cell_width
+            운성 = 세운.get('12운성', '-')
+            draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                                   radius=5, fill='#FFFFFF', outline=border_color, width=border_width)
+            draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                      운성, font=font_medium, fill='#555555', anchor='mm')
+        
+        current_y += cell_height_small
+        
+        # 12신살 행
+        draw.rounded_rectangle([start_x, current_y, start_x + label_width, current_y + cell_height_small],
+                               radius=5, fill='#FAFAFA', outline=border_color, width=border_width)
+        draw.text((start_x + label_width // 2, current_y + cell_height_small // 2),
+                  "12신살", font=font_small, fill='#666666', anchor='mm')
+        
+        for i, 세운 in enumerate(세운_list):
+            x = start_x + label_width + i * cell_width
+            신살 = 세운.get('12신살', '-')
+            draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                                   radius=5, fill='#FFF8E1', outline=border_color, width=border_width)
+            draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                      신살, font=font_medium, fill='#E65100', anchor='mm')
+        
+        return current_y + cell_height_small
     
     # 테이블 시작
     table_start_y = vertical_margin + title_area
@@ -778,7 +826,7 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     content_width = label_width + (cell_width * cols_per_row)
     width = content_width + (margin * 2)
     
-    row_height = cell_height_small + cell_height_main * 2
+    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2  # 12운성 + 12신살 추가
     title_area = 70
     row_gap = 25
     vertical_margin = 35
@@ -870,7 +918,39 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
             draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
                       월운['지지_십성'], font=font_small, fill=text_color, anchor='mm')
         
-        return current_y + cell_height_main
+        current_y += cell_height_main
+        
+        # 12운성 행
+        draw.rounded_rectangle([start_x, current_y, start_x + label_width, current_y + cell_height_small],
+                               radius=5, fill='#FAFAFA', outline=border_color, width=border_width)
+        draw.text((start_x + label_width // 2, current_y + cell_height_small // 2),
+                  "12운성", font=font_small, fill='#666666', anchor='mm')
+        
+        for i, 월운 in enumerate(월운_list):
+            x = start_x + label_width + i * cell_width
+            운성 = 월운.get('12운성', '-')
+            draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                                   radius=5, fill='#FFFFFF', outline=border_color, width=border_width)
+            draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                      운성, font=font_medium, fill='#555555', anchor='mm')
+        
+        current_y += cell_height_small
+        
+        # 12신살 행
+        draw.rounded_rectangle([start_x, current_y, start_x + label_width, current_y + cell_height_small],
+                               radius=5, fill='#FAFAFA', outline=border_color, width=border_width)
+        draw.text((start_x + label_width // 2, current_y + cell_height_small // 2),
+                  "12신살", font=font_small, fill='#666666', anchor='mm')
+        
+        for i, 월운 in enumerate(월운_list):
+            x = start_x + label_width + i * cell_width
+            신살 = 월운.get('12신살', '-')
+            draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_small],
+                                   radius=5, fill='#FFF8E1', outline=border_color, width=border_width)
+            draw.text((x + cell_width // 2, current_y + cell_height_small // 2),
+                      신살, font=font_medium, fill='#E65100', anchor='mm')
+        
+        return current_y + cell_height_small
     
     # 테이블 시작
     table_start_y = vertical_margin + title_area
