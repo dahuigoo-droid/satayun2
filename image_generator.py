@@ -806,19 +806,19 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
 # ============================================
 def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     """
-    월운표 이미지 생성 (2행 구조, 투명 배경, 큰 폰트)
+    월운표 이미지 생성 (2행 구조, 투명 배경)
     """
     
     월운_list = 월운_data['월운']
     
-    # 6개씩 2행으로 분할
-    row1 = 월운_list[:6]
-    row2 = 월운_list[6:12]
+    # 7개씩 2행으로 분할 (14개월)
+    row1 = 월운_list[:7]
+    row2 = 월운_list[7:14]
     
-    # 크기 설정 (축소)
+    # 크기 설정 (7열로 변경)
     margin = 20
-    cols_per_row = 6
-    cell_width = 85
+    cols_per_row = 7
+    cell_width = 80
     cell_height_small = 28
     cell_height_main = 55
     label_width = 55
@@ -837,12 +837,12 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트 (축소)
+    # 폰트
     font_title = get_font(24, bold=True)
     font_subtitle = get_font(11, bold=True)
-    font_large = get_font(24, bold=True)
-    font_medium = get_font(11, bold=True)
-    font_small = get_font(10, bold=True)
+    font_large = get_font(22, bold=True)
+    font_medium = get_font(10, bold=True)
+    font_small = get_font(9, bold=True)
     
     border_color = '#AAAAAA'
     border_width = 1
@@ -851,7 +851,7 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     title_y = vertical_margin + 18
     subtitle_y = vertical_margin + 38
     draw.text((width // 2, title_y), f"{기본정보['이름']}님 월운표", font=font_title, fill='#333333', anchor='mm')
-    draw.text((width // 2, subtitle_y), f"{월운_list[0]['년도']}년 {월운_list[0]['월']}월 ~ {월운_list[-1]['년도']}년 {월운_list[-1]['월']}월 (12개월)", font=font_subtitle, fill='#666666', anchor='mm')
+    draw.text((width // 2, subtitle_y), f"{월운_list[0]['년도']}년 {월운_list[0]['월']}월 ~ {월운_list[-1]['년도']}년 {월운_list[-1]['월']}월 (14개월)", font=font_subtitle, fill='#666666', anchor='mm')
     
     def draw_월운_row(월운_list, start_y, row_num):
         current_y = start_y

@@ -602,7 +602,7 @@ def calc_세운(year, month, day, hour, minute, 기준년=None):
 # ============================================
 def calc_월운(year, month, day, hour, minute, 기준년=None, 기준월=None):
     """
-    월운 계산 (당해월부터 12개월)
+    월운 계산 (당해월부터 14개월)
     """
     from datetime import datetime
     
@@ -621,7 +621,7 @@ def calc_월운(year, month, day, hour, minute, 기준년=None, 기준월=None):
     현재_년 = 기준년
     현재_월 = 기준월
     
-    for i in range(12):
+    for i in range(14):  # 14개월로 변경
         # 해당 년의 년간 계산
         년_천간, _ = calc_년주(현재_년, 6, 15)
         
