@@ -1964,34 +1964,36 @@ def create_합충형파해표(사주_data, 기본정보, output_path="합충형�
     천간합_결과 = calc_천간합(사주_data)
     
     width = 650
-    height = 520
+    height = 540
     
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
+    # 폰트 (크게)
     font_title = get_font(24, bold=True)
-    font_header = get_font(12, bold=True)
+    font_label = get_font(16, bold=True)  # 관계명 크게
+    font_header = get_font(14, bold=True)
     font_medium = get_font(14, bold=True)
     font_small = get_font(12, bold=True)
     
-    draw.text((width // 2, 20), f"{기본정보['이름']}님 합충형파해 분석", 
+    draw.text((width // 2, 22), f"{기본정보['이름']}님 합충형파해 분석", 
               font=font_title, fill='#333333', anchor='mm')
     
-    # 원국 표시
-    원국_y = 50
-    draw.rectangle([20, 원국_y, width - 20, 원국_y + 50],
-                   fill='#FAFAFA', outline='#E0E0E0')
+    # 원국 표시 (배경색 추가)
+    원국_y = 52
+    draw.rectangle([20, 원국_y, width - 20, 원국_y + 55],
+                   fill='#E3F2FD', outline='#90CAF9')
     
     labels = ['시주', '일주', '월주', '년주']
     cols = ['시', '일', '월', '년']
-    col_positions = [100, 220, 380, 520]
+    col_positions = [100, 230, 390, 530]
     
     for i, (label, col) in enumerate(zip(labels, cols)):
         x = col_positions[i]
         천간 = 사주_data[f'{col}주'][0]
         지지 = 사주_data[f'{col}주'][1]
-        draw.text((x, 원국_y + 18), label, font=font_small, fill='#666666', anchor='mm')
-        draw.text((x, 원국_y + 38), f"{천간}{지지}", font=font_header, fill='#333333', anchor='mm')
+        draw.text((x, 원국_y + 18), label, font=font_small, fill='#1565C0', anchor='mm')
+        draw.text((x, 원국_y + 40), f"{천간}{지지}", font=font_header, fill='#333333', anchor='mm')
     
     # 분석 결과
     current_y = 원국_y + 70
@@ -2007,7 +2009,7 @@ def create_합충형파해표(사주_data, 기본정보, output_path="합충형�
         ('해', 합충형파해['해'], '#9C27B0', '해침'),
     ]
     
-    row_height = 42
+    row_height = 45
     
     for 관계명, 결과, 색상, 설명 in 관계_목록:
         has_result = len(결과) > 0
@@ -2016,8 +2018,9 @@ def create_합충형파해표(사주_data, 기본정보, output_path="합충형�
         draw.rectangle([20, current_y, width - 20, current_y + row_height],
                        fill=bg_color, outline='#E0E0E0')
         
+        # 관계명 (크게)
         draw.text((80, current_y + row_height // 2), 관계명, 
-                  font=font_header, fill=색상, anchor='mm')
+                  font=font_label, fill=색상, anchor='mm')
         
         if has_result:
             if 관계명 == '천간합':
@@ -2029,26 +2032,27 @@ def create_합충형파해표(사주_data, 기본정보, output_path="합충형�
             else:
                 result_str = ', '.join([f"{r['지지']}({r['위치']})" for r in 결과])
             
-            draw.text((350, current_y + 13), result_str, font=font_medium, fill='#333333', anchor='mm')
-            draw.text((350, current_y + 30), 설명, font=font_small, fill='#666666', anchor='mm')
+            draw.text((370, current_y + 14), result_str, font=font_medium, fill='#333333', anchor='mm')
+            draw.text((370, current_y + 32), 설명, font=font_small, fill='#666666', anchor='mm')
         else:
-            draw.text((350, current_y + row_height // 2), "해당 없음", font=font_medium, fill='#BDBDBD', anchor='mm')
+            draw.text((370, current_y + row_height // 2), "해당 없음", font=font_medium, fill='#BDBDBD', anchor='mm')
         
         current_y += row_height
     
-    # 요약
-    summary_y = current_y + 10
+    # 요약 (배경색 추가)
+    summary_y = current_y + 12
     합_count = len(천간합_결과) + len(합충형파해['육합']) + len(합충형파해['삼합']) + len(합충형파해['방합'])
     충돌_count = len(합충형파해['충']) + len(합충형파해['형']) + len(합충형파해['파']) + len(합충형파해['해'])
     
-    draw.rectangle([20, summary_y, width - 20, summary_y + 40],
-                   fill='#FAFAFA', outline='#E0E0E0')
-    
     총평 = "합이 많아 조화로움" if 합_count > 충돌_count else "충돌이 있어 변동 있음" if 충돌_count > 합_count else "균형"
     총평_color = '#4CAF50' if 합_count > 충돌_count else '#F44336' if 충돌_count > 합_count else '#FF9800'
+    bg_summary = '#E8F5E9' if 합_count > 충돌_count else '#FFEBEE' if 충돌_count > 합_count else '#FFF8E1'
     
-    draw.text((width // 2, summary_y + 20), f"합: {합_count}개 | 충돌: {충돌_count}개 -> {총평}", 
-              font=font_medium, fill=총평_color, anchor='mm')
+    draw.rectangle([20, summary_y, width - 20, summary_y + 45],
+                   fill=bg_summary, outline='#E0E0E0')
+    
+    draw.text((width // 2, summary_y + 22), f"합: {합_count}개 | 충돌: {충돌_count}개 -> {총평}", 
+              font=get_font(16, bold=True), fill=총평_color, anchor='mm')
     
     img.save(output_path, 'PNG')
     return output_path
