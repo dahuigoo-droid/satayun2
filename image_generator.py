@@ -503,10 +503,10 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
     
     # 폰트
     font_title = get_font(32, bold=True)
-    font_subtitle = get_font(18)
+    font_subtitle = get_font(18, bold=True)
     font_large = get_font(40, bold=True)
-    font_medium = get_font(20)
-    font_small = get_font(16)
+    font_medium = get_font(20, bold=True)
+    font_small = get_font(16, bold=True)
     
     border_color = '#AAAAAA'
     border_width = 2
@@ -654,10 +654,10 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
     
     # 폰트
     font_title = get_font(32, bold=True)
-    font_subtitle = get_font(18)
+    font_subtitle = get_font(18, bold=True)
     font_large = get_font(40, bold=True)
-    font_medium = get_font(20)
-    font_small = get_font(16)
+    font_medium = get_font(20, bold=True)
+    font_small = get_font(16, bold=True)
     
     border_color = '#AAAAAA'
     border_width = 2
@@ -789,10 +789,10 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     
     # 폰트
     font_title = get_font(32, bold=True)
-    font_subtitle = get_font(18)
+    font_subtitle = get_font(18, bold=True)
     font_large = get_font(40, bold=True)
-    font_medium = get_font(20)
-    font_small = get_font(16)
+    font_medium = get_font(20, bold=True)
+    font_small = get_font(16, bold=True)
     
     border_color = '#AAAAAA'
     border_width = 2
@@ -909,11 +909,11 @@ def create_오행차트(사주_data, 기본정보, output_path="오행차트.png
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
+    # 폰트 (통일)
     font_title = get_font(28, bold=True)
     font_large = get_font(24, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_medium = get_font(16, bold=True)
+    font_small = get_font(14, bold=True)
     
     # 오행 색상
     chart_colors = {
@@ -1161,11 +1161,11 @@ def create_십성표(사주_data, 기본정보, output_path="십성표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
-    font_title = get_font(16)
-    font_header = get_font(12, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    # 폰트 (통일)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(11, bold=True)
+    font_medium = get_font(12, bold=True)
+    font_small = get_font(11, bold=True)
     
     # ========== 상단 제목 ==========
     draw.text((width // 2, 20), f"{기본정보['이름']}님 십성 분석표", 
@@ -1321,11 +1321,11 @@ def create_오행도(사주_data, 기본정보, output_path="오행도.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
+    # 폰트 (통일)
     font_title = get_font(28, bold=True)
-    font_large = get_font(22, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_large = get_font(20, bold=True)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     # ========== 상단 제목 ==========
     draw.text((width // 2, 25), f"나의 오행: {일간}({일간_오행})", 
@@ -1557,11 +1557,11 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
-    font_title = get_font(18)
-    font_header = get_font(14, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(18)
+    # 폰트 (통일)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(12, bold=True)
+    font_small = get_font(11, bold=True)
     
     # ========== 상단 제목 ==========
     y_start = 18
@@ -1731,7 +1731,7 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
     font_title = get_font(16)
     font_header = get_font(12, bold=True)
     font_medium = get_font(18)
-    font_small = get_font(16)
+    font_small = get_font(16, bold=True)
     
     # 제목
     draw.text((width // 2, 20), f"{기본정보['이름']}님 12운성표 (일간: {일간})", 
@@ -1861,10 +1861,10 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
+    font_title = get_font(24, bold=True)
     font_header = get_font(12, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     draw.text((width // 2, 20), f"{기본정보['이름']}님 지장간표", 
               font=font_title, fill='#333333', anchor='mm')
@@ -1969,10 +1969,10 @@ def create_합충형파해표(사주_data, 기본정보, output_path="합충형�
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
-    font_header = get_font(13, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     draw.text((width // 2, 20), f"{기본정보['이름']}님 합충형파해 분석", 
               font=font_title, fill='#333333', anchor='mm')
@@ -2070,10 +2070,10 @@ def create_궁성표(사주_data, 기본정보, output_path="궁성표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
-    font_header = get_font(13, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     draw.text((width // 2, 20), f"{기본정보['이름']}님 사주 궁성표", 
               font=font_title, fill='#333333', anchor='mm')
@@ -2137,10 +2137,10 @@ def create_육친표(사주_data, 기본정보, gender='남', output_path="육�
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
+    font_title = get_font(24, bold=True)
     font_header = get_font(12, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     성별_텍스트 = '남성' if gender == '남' else '여성'
     draw.text((width // 2, 20), f"{기본정보['이름']}님 육친표 ({성별_텍스트})", 
@@ -2217,13 +2217,13 @@ def create_납음오행표(사주_data, 기본정보, output_path="납음오행�
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
-    font_header = get_font(13, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     draw.text((width // 2, 20), f"{기본정보['이름']}님 납음오행표", font=font_title, fill='#333333', anchor='mm')
-    draw.text((width // 2, 40), "(60갑자의 소리 오행)", font=font_small, fill='#666666', anchor='mm')
+    draw.text((width // 2, 42), "(60갑자의 소리 오행)", font=font_small, fill='#666666', anchor='mm')
     
     box_width = 145
     box_height = 120
@@ -2273,10 +2273,10 @@ def create_격국표(사주_data, 기본정보, output_path="격국표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
-    font_header = get_font(14, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     draw.text((width // 2, 20), f"{기본정보['이름']}님 격국 분석", font=font_title, fill='#333333', anchor='mm')
     
@@ -2322,10 +2322,10 @@ def create_공망표(사주_data, 기본정보, output_path="공망표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
-    font_header = get_font(13, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
     
     draw.text((width // 2, 20), f"{기본정보['이름']}님 공망 분석", font=font_title, fill='#333333', anchor='mm')
     
@@ -2384,12 +2384,12 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
-    font_title = get_font(18, bold=True)
-    font_header = get_font(13, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(18)
-    font_large = get_font(28, bold=True)
+    # 폰트 (통일)
+    font_title = get_font(24, bold=True)
+    font_header = get_font(12, bold=True)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
+    font_large = get_font(24, bold=True)
     font_desc = get_font(16)
     
     # 오행별 색상
