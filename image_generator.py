@@ -151,25 +151,25 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     border_width = 1
     border_radius = 8
     
-    # 이미지 크기 (기존)
+    # 이미지 크기 (상하 여백 균형 조절)
     width = 600
-    height = 570 if 신살_data else 455
+    height = 580 if 신살_data else 465
     
     # 투명 배경
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트 (기존 크기)
+    # 폰트 (모두 bold)
     font_name = get_font(18, bold=True)
-    font_title = get_font(14)
+    font_title = get_font(14, bold=True)
     font_large = get_font(36, bold=True)  # 천간/지지
-    font_medium = get_font(14)
-    font_small = get_font(12)
-    font_sinsal = get_font(10)
-    font_info = get_font(12)
+    font_medium = get_font(14, bold=True)
+    font_small = get_font(12, bold=True)
+    font_sinsal = get_font(10, bold=True)
+    font_info = get_font(12, bold=True)
     
     # ========== 상단 정보 영역 ==========
-    info_box_y = 8
+    info_box_y = 12
     
     # 왼쪽: 12지 원형 영역
     zodiac_circle_size = 85
@@ -231,7 +231,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
     draw.text((info_x, info_box_y + 70), f"음력: {기본정보['음력']}  |  {띠_이름}", font=font_info, fill='#666666')
     
     # ========== 원국표 테이블 ==========
-    table_y = 100
+    table_y = 105  # 상단 여백 조절
     cell_width = 120
     cell_height_header = 30
     cell_height_main = 70
