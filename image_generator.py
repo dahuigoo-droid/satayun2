@@ -416,11 +416,13 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
             draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_sinsal],
                                    radius=5, fill='#FFFEF0', outline=border_color, width=border_width)
             
-            천간_신살_list = 신살_data.get(f'{col}주_천간_신살', [])
+            # 수정: 올바른 데이터 접근
+            천간_신살_dict = 신살_data.get('천간신살', {})
+            천간_신살_list = 천간_신살_dict.get(col, [])
             if 천간_신살_list:
                 text = '\n'.join(천간_신살_list[:3])
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), text,
-                          font=font_sinsal, fill='#666666', anchor='mm')
+                          font=get_font(10, bold=True), fill='#333333', anchor='mm')
             else:
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), "-",
                           font=font_sinsal, fill='#CCCCCC', anchor='mm')
@@ -438,11 +440,13 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
             draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_sinsal],
                                    radius=5, fill='#F0FFF0', outline=border_color, width=border_width)
             
-            지지_신살_list = 신살_data.get(f'{col}주_지지_신살', [])
+            # 수정: 올바른 데이터 접근
+            지지_신살_dict = 신살_data.get('지지신살', {})
+            지지_신살_list = 지지_신살_dict.get(col, [])
             if 지지_신살_list:
                 text = '\n'.join(지지_신살_list[:3])
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), text,
-                          font=font_sinsal, fill='#666666', anchor='mm')
+                          font=get_font(10, bold=True), fill='#333333', anchor='mm')
             else:
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), "-",
                           font=font_sinsal, fill='#CCCCCC', anchor='mm')
@@ -1601,10 +1605,12 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
                   "-", font=font_medium, fill='#BDBDBD', anchor='mm')
         current_y += row_height
     
-    # 길신 개수
-    count_y = table_y + header_height + (max_rows * row_height) + 8
-    draw.text((col1_x + col_width // 2, count_y), 
-              f"총 {len(길신)}개", font=font_small, fill='#1565C0', anchor='mm')
+    # 길신 개수 (박스로 감싸기)
+    count_y = table_y + header_height + (max_rows * row_height)
+    draw.rectangle([col1_x, count_y, col1_x + col_width, count_y + 28],
+                   fill='#E3F2FD', outline='#90CAF9')
+    draw.text((col1_x + col_width // 2, count_y + 14), 
+              f"총 {len(길신)}개", font=font_header, fill='#1565C0', anchor='mm')
     
     # ========== 흉신 열 ==========
     col2_x = start_x + col_width + col_gap
@@ -1634,9 +1640,11 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
                   "-", font=font_medium, fill='#BDBDBD', anchor='mm')
         current_y += row_height
     
-    # 흉신 개수
-    draw.text((col2_x + col_width // 2, count_y), 
-              f"총 {len(흉신)}개", font=font_small, fill='#C62828', anchor='mm')
+    # 흉신 개수 (박스로 감싸기)
+    draw.rectangle([col2_x, count_y, col2_x + col_width, count_y + 28],
+                   fill='#FFEBEE', outline='#FFCDD2')
+    draw.text((col2_x + col_width // 2, count_y + 14), 
+              f"총 {len(흉신)}개", font=font_header, fill='#C62828', anchor='mm')
     
     # ========== 특수신살 열 ==========
     col3_x = start_x + (col_width + col_gap) * 2
@@ -1666,16 +1674,18 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
                   "-", font=font_medium, fill='#BDBDBD', anchor='mm')
         current_y += row_height
     
-    # 특수신살 개수
-    draw.text((col3_x + col_width // 2, count_y), 
-              f"총 {len(특수신살)}개", font=font_small, fill='#7B1FA2', anchor='mm')
+    # 특수신살 개수 (박스로 감싸기)
+    draw.rectangle([col3_x, count_y, col3_x + col_width, count_y + 28],
+                   fill='#F3E5F5', outline='#E1BEE7')
+    draw.text((col3_x + col_width // 2, count_y + 14), 
+              f"총 {len(특수신살)}개", font=font_header, fill='#7B1FA2', anchor='mm')
     
     # ========== 하단 요약 ==========
-    summary_y = count_y + 25
+    summary_y = count_y + 40
     
-    # 총평 배경 (연한 회색)
+    # 총평 배경 (노란색)
     draw.rectangle([start_x, summary_y, start_x + col_width * 3 + col_gap * 2, summary_y + 50],
-                   fill='#FAFAFA', outline='#E0E0E0')
+                   fill='#FFF8E1', outline='#FFE082')
     
     total_길 = len(길신)
     total_흉 = len(흉신)
@@ -1693,9 +1703,9 @@ def create_신살표(신살_data, 기본정보, output_path="신살표.png"):
     
     draw.text((width // 2, summary_y + 17), 
               f"길신 {total_길}개 vs 흉신 {total_흉}개", 
-              font=font_medium, fill='#333333', anchor='mm')
+              font=get_font(14, bold=True), fill='#E65100', anchor='mm')
     draw.text((width // 2, summary_y + 36), 
-              총평, font=font_small, fill=총평_color, anchor='mm')
+              총평, font=font_medium, fill=총평_color, anchor='mm')
     
     # 저장
     img.save(output_path, 'PNG')
@@ -1728,13 +1738,13 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    font_title = get_font(16)
+    font_title = get_font(24, bold=True)  # 제목 크게
     font_header = get_font(12, bold=True)
-    font_medium = get_font(18)
-    font_small = get_font(16, bold=True)
+    font_medium = get_font(16, bold=True)
+    font_small = get_font(12, bold=True)
     
     # 제목
-    draw.text((width // 2, 20), f"{기본정보['이름']}님 12운성표 (일간: {일간})", 
+    draw.text((width // 2, 22), f"{기본정보['이름']}님 12운성표 (일간: {일간})", 
               font=font_title, fill='#333333', anchor='mm')
     
     # 운성별 에너지 레벨
@@ -1750,8 +1760,8 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
     col_width = 50
     row_height = 26
     label_width = 50
-    table_width = label_width + 12 * col_width  # 50 + 600 = 650
-    start_x = (width - table_width) // 2  # 중앙 정렬
+    table_width = label_width + 12 * col_width
+    start_x = (width - table_width) // 2
     
     # 헤더 (지지)
     draw.rectangle([start_x, table_y, start_x + label_width, table_y + 28],
@@ -1761,7 +1771,6 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
     
     for i, 지지명 in enumerate(지지):
         x = start_x + label_width + i * col_width
-        # 원국에 있는 지지 강조
         is_원국 = 지지명 in 원국_지지.values()
         bg_color = '#E3F2FD' if is_원국 else '#F5F5F5'
         draw.rectangle([x, table_y, x + col_width, table_y + 28],
@@ -1807,12 +1816,12 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
         draw.text((x + col_width // 2, current_y + row_height // 2), 에너지_상태, 
                   font=font_small, fill='#666666', anchor='mm')
     
-    # 내 사주 운성 요약
+    # 내 사주 운성 요약 (배경색 추가)
     summary_y = current_y + 35
-    draw.rectangle([20, summary_y, width - 20, summary_y + 95],
-                   fill='#FAFAFA', outline='#E0E0E0')
-    draw.text((width // 2, summary_y + 12), "[ 내 사주 12운성 ]", 
-              font=font_header, fill='#333333', anchor='mm')
+    draw.rectangle([start_x, summary_y, start_x + table_width, summary_y + 95],
+                   fill='#FFF8E1', outline='#FFE082')
+    draw.text((width // 2, summary_y + 14), "[ 내 사주 12운성 ]", 
+              font=get_font(14, bold=True), fill='#E65100', anchor='mm')
     
     col_positions = [100, 250, 400, 550]
     labels = ['년주', '월주', '일주', '시주']
@@ -1824,9 +1833,9 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
         운성 = 운성_전체[지지명]
         에너지_상태, 색상 = 에너지[운성]
         
-        draw.text((x, summary_y + 35), label, font=font_medium, fill='#666666', anchor='mm')
-        draw.text((x, summary_y + 55), f"{지지명} -> {운성}", font=font_medium, fill=색상, anchor='mm')
-        draw.text((x, summary_y + 73), f"({에너지_상태})", font=font_small, fill='#999999', anchor='mm')
+        draw.text((x, summary_y + 38), label, font=font_medium, fill='#666666', anchor='mm')
+        draw.text((x, summary_y + 58), f"{지지명} -> {운성}", font=font_medium, fill=색상, anchor='mm')
+        draw.text((x, summary_y + 78), f"({에너지_상태})", font=font_small, fill='#999999', anchor='mm')
     
     # 범례
     legend_y = summary_y + 105
@@ -1916,12 +1925,12 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
             draw.text((x + col_width // 2, current_y + row_height // 2), text, 
                       font=font_medium, fill=color, anchor='mm')
     
-    # 내 사주 지장간 요약
+    # 내 사주 지장간 요약 (배경색 추가)
     summary_y = table_y + 28 + len(행_이름) * row_height + 20
-    draw.rectangle([20, summary_y, width - 20, summary_y + 80],
-                   fill='#FAFAFA', outline='#E0E0E0')
-    draw.text((width // 2, summary_y + 12), "[ 내 사주 지장간 ]", 
-              font=font_header, fill='#333333', anchor='mm')
+    draw.rectangle([start_x, summary_y, start_x + table_width, summary_y + 80],
+                   fill='#E8F5E9', outline='#A5D6A7')
+    draw.text((width // 2, summary_y + 14), "[ 내 사주 지장간 ]", 
+              font=get_font(14, bold=True), fill='#2E7D32', anchor='mm')
     
     col_positions = [100, 250, 400, 550]
     labels = ['년지', '월지', '일지', '시지']
@@ -1932,7 +1941,7 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
         지지명 = 원국_지지[col]
         지장간 = 지장간_전체[지지명]
         
-        draw.text((x, summary_y + 35), f"{label}: {지지명}", font=font_medium, fill='#666666', anchor='mm')
+        draw.text((x, summary_y + 38), f"{label}: {지지명}", font=font_medium, fill='#666666', anchor='mm')
         
         지장간_str = []
         if 지장간['여기']:
@@ -1942,7 +1951,7 @@ def create_지장간표(사주_data, 기본정보, output_path="지장간표.png
         if 지장간['본기']:
             지장간_str.append(지장간['본기'])
         
-        draw.text((x, summary_y + 58), ' '.join(지장간_str), font=font_medium, fill='#1565C0', anchor='mm')
+        draw.text((x, summary_y + 60), ' '.join(지장간_str), font=get_font(14, bold=True), fill='#1565C0', anchor='mm')
     
     desc_y = summary_y + 88
     draw.text((width // 2, desc_y), "* 지장간: 지지 속에 숨어있는 천간 (본기가 가장 강함)", 
