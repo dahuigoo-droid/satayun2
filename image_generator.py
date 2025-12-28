@@ -2065,7 +2065,7 @@ def create_궁성표(사주_data, 기본정보, output_path="궁성표.png"):
     궁성 = calc_궁성(사주_data)
     
     width = 700
-    height = 250
+    height = 280
     
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
@@ -2073,16 +2073,18 @@ def create_궁성표(사주_data, 기본정보, output_path="궁성표.png"):
     font_title = get_font(24, bold=True)
     font_header = get_font(12, bold=True)
     font_medium = get_font(14, bold=True)
-    font_small = get_font(12, bold=True)
+    font_small = get_font(11, bold=True)
     
-    draw.text((width // 2, 20), f"{기본정보['이름']}님 사주 궁성표", 
+    draw.text((width // 2, 22), f"{기본정보['이름']}님 사주 궁성표", 
               font=font_title, fill='#333333', anchor='mm')
     
-    box_width = 155
-    box_height = 110
-    start_x = 30
+    # 박스 설정 (균형 맞춤)
+    box_width = 158
+    box_height = 130
+    gap = 8
+    total_width = box_width * 4 + gap * 3
+    start_x = (width - total_width) // 2  # 중앙 정렬
     box_y = 55
-    gap = 10
     
     궁_색상 = {'년주': '#E3F2FD', '월주': '#E8F5E9', '일주': '#FFF3E0', '시주': '#F3E5F5'}
     헤더_색상 = {'년주': '#1565C0', '월주': '#2E7D32', '일주': '#E65100', '시주': '#7B1FA2'}
@@ -2090,32 +2092,46 @@ def create_궁성표(사주_data, 기본정보, output_path="궁성표.png"):
     for i, (주, 정보) in enumerate(궁성.items()):
         x = start_x + i * (box_width + gap)
         
+        # 박스 배경
         draw.rectangle([x, box_y, x + box_width, box_y + box_height],
                        fill=궁_색상[주], outline='#CCCCCC')
         
-        draw.rectangle([x, box_y, x + box_width, box_y + 28],
+        # 헤더
+        draw.rectangle([x, box_y, x + box_width, box_y + 26],
                        fill=헤더_색상[주], outline=헤더_색상[주])
-        draw.text((x + box_width // 2, box_y + 14), 주, 
+        draw.text((x + box_width // 2, box_y + 13), 주, 
                   font=font_header, fill='#FFFFFF', anchor='mm')
         
+        # 천간지지
         draw.text((x + box_width // 2, box_y + 48), f"{정보['천간']}{정보['지지']}", 
-                  font=get_font(16, bold=True), fill='#333333', anchor='mm')
+                  font=get_font(18, bold=True), fill='#333333', anchor='mm')
         
-        draw.text((x + box_width // 2, box_y + 72), 정보['궁'], 
-                  font=font_small, fill=헤더_색상[주], anchor='mm')
+        # 궁 이름
+        draw.text((x + box_width // 2, box_y + 75), 정보['궁'], 
+                  font=font_medium, fill=헤더_색상[주], anchor='mm')
         
-        의미_short = 정보['의미'][:20]
-        draw.text((x + box_width // 2, box_y + 92), 의미_short, 
-                  font=font_small, fill='#666666', anchor='mm')
+        # 의미 (2줄로 나누기)
+        의미 = 정보['의미']
+        if len(의미) > 14:
+            line1 = 의미[:14]
+            line2 = 의미[14:28] if len(의미) > 14 else ''
+            draw.text((x + box_width // 2, box_y + 98), line1, 
+                      font=font_small, fill='#666666', anchor='mm')
+            draw.text((x + box_width // 2, box_y + 115), line2, 
+                      font=font_small, fill='#666666', anchor='mm')
+        else:
+            draw.text((x + box_width // 2, box_y + 105), 의미, 
+                      font=font_small, fill='#666666', anchor='mm')
     
-    # 시간대 설명
-    time_y = box_y + box_height + 20
-    draw.rectangle([20, time_y, width - 20, time_y + 50],
-                   fill='#FAFAFA', outline='#E0E0E0')
+    # 시간대 설명 (배경색 추가)
+    time_y = box_y + box_height + 15
+    draw.rectangle([start_x, time_y, start_x + total_width, time_y + 55],
+                   fill='#FFF8E1', outline='#FFE082')
     
-    draw.text((width // 2, time_y + 15), "[ 운세 적용 시기 ]", font=font_header, fill='#333333', anchor='mm')
-    draw.text((width // 2, time_y + 35), "년주:1~15세 | 월주:15~30세 | 일주:30~45세 | 시주:45세~", 
-              font=font_medium, fill='#666666', anchor='mm')
+    draw.text((width // 2, time_y + 17), "[ 운세 적용 시기 ]", 
+              font=get_font(13, bold=True), fill='#E65100', anchor='mm')
+    draw.text((width // 2, time_y + 40), "년주:1~15세 | 월주:15~30세 | 일주:30~45세 | 시주:45세~", 
+              font=font_medium, fill='#795548', anchor='mm')
     
     img.save(output_path, 'PNG')
     return output_path
