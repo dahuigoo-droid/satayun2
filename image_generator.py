@@ -470,7 +470,7 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
 # ============================================
 def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
     """
-    대운표 이미지 생성 (2행 구조, 투명 배경, 큰 폰트)
+    대운표 이미지 생성 (2행 구조, 투명 배경)
     """
     
     대운_list = 대운_data['대운']
@@ -481,21 +481,21 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
     row1 = 대운_list[:6]
     row2 = 대운_list[6:12]
     
-    # 크기 설정
-    margin = 40
+    # 크기 설정 (축소)
+    margin = 20
     cols_per_row = 6
-    cell_width = 130
-    cell_height_small = 45
-    cell_height_main = 90
-    label_width = 90
+    cell_width = 85
+    cell_height_small = 28
+    cell_height_main = 55
+    label_width = 55
     
     content_width = label_width + (cell_width * cols_per_row)
     width = content_width + (margin * 2)
     
-    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2  # 12운성 + 12신살
-    title_area = 70
-    row_gap = 25
-    vertical_margin = 35
+    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2
+    title_area = 50
+    row_gap = 15
+    vertical_margin = 20
     
     height = vertical_margin * 2 + title_area + row_height * 2 + row_gap
     
@@ -503,19 +503,19 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
-    font_title = get_font(32, bold=True)
-    font_subtitle = get_font(18, bold=True)
-    font_large = get_font(40, bold=True)
-    font_medium = get_font(20, bold=True)
-    font_small = get_font(16, bold=True)
+    # 폰트 (축소)
+    font_title = get_font(24, bold=True)
+    font_subtitle = get_font(12, bold=True)
+    font_large = get_font(24, bold=True)
+    font_medium = get_font(12, bold=True)
+    font_small = get_font(10, bold=True)
     
     border_color = '#AAAAAA'
-    border_width = 2
+    border_width = 1
     
     # 제목
-    title_y = vertical_margin + 25
-    subtitle_y = vertical_margin + 55
+    title_y = vertical_margin + 18
+    subtitle_y = vertical_margin + 38
     방향 = "순행" if 순행 else "역행"
     draw.text((width // 2, title_y), f"{기본정보['이름']}님 대운표", font=font_title, fill='#333333', anchor='mm')
     draw.text((width // 2, subtitle_y), f"대운수: {대운수}세 시작 | {방향}", font=font_subtitle, fill='#666666', anchor='mm')
@@ -556,9 +556,9 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
                                    radius=5, fill=bg_color, outline=border_color, width=border_width)
             
             한자 = 천간_한자[천간]
-            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
                       f"{천간}({한자})", font=font_large, fill=text_color, anchor='mm')
-            draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
+            draw.text((x + cell_width // 2, current_y + cell_height_main - 8),
                       대운['천간_십성'], font=font_small, fill=text_color, anchor='mm')
         
         current_y += cell_height_main
@@ -580,9 +580,9 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
                                    radius=5, fill=bg_color, outline=border_color, width=border_width)
             
             한자 = 지지_한자[지지]
-            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
                       f"{지지}({한자})", font=font_large, fill=text_color, anchor='mm')
-            draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
+            draw.text((x + cell_width // 2, current_y + cell_height_main - 8),
                       대운['지지_십성'], font=font_small, fill=text_color, anchor='mm')
         
         current_y += cell_height_main
@@ -639,7 +639,7 @@ def create_대운표(대운_data, 기본정보, output_path="대운표.png"):
 # ============================================
 def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
     """
-    세운표 이미지 생성 (2행 구조, 투명 배경, 큰 폰트)
+    세운표 이미지 생성 (2행 구조, 투명 배경)
     """
     
     세운_list = 세운_data['세운']
@@ -648,21 +648,21 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
     row1 = 세운_list[:5]
     row2 = 세운_list[5:10]
     
-    # 크기 설정
-    margin = 40
+    # 크기 설정 (축소)
+    margin = 20
     cols_per_row = 5
-    cell_width = 140
-    cell_height_small = 45
-    cell_height_main = 90
-    label_width = 90
+    cell_width = 100
+    cell_height_small = 28
+    cell_height_main = 55
+    label_width = 55
     
     content_width = label_width + (cell_width * cols_per_row)
     width = content_width + (margin * 2)
     
-    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2  # 12운성 + 12신살 추가
-    title_area = 70
-    row_gap = 25
-    vertical_margin = 35
+    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2
+    title_area = 50
+    row_gap = 15
+    vertical_margin = 20
     
     height = vertical_margin * 2 + title_area + row_height * 2 + row_gap
     
@@ -670,19 +670,19 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
-    font_title = get_font(32, bold=True)
-    font_subtitle = get_font(18, bold=True)
-    font_large = get_font(40, bold=True)
-    font_medium = get_font(20, bold=True)
-    font_small = get_font(16, bold=True)
+    # 폰트 (축소)
+    font_title = get_font(24, bold=True)
+    font_subtitle = get_font(12, bold=True)
+    font_large = get_font(24, bold=True)
+    font_medium = get_font(12, bold=True)
+    font_small = get_font(10, bold=True)
     
     border_color = '#AAAAAA'
-    border_width = 2
+    border_width = 1
     
     # 제목
-    title_y = vertical_margin + 25
-    subtitle_y = vertical_margin + 55
+    title_y = vertical_margin + 18
+    subtitle_y = vertical_margin + 38
     draw.text((width // 2, title_y), f"{기본정보['이름']}님 세운표", font=font_title, fill='#333333', anchor='mm')
     draw.text((width // 2, subtitle_y), f"{세운_list[0]['년도']}년 ~ {세운_list[-1]['년도']}년 (10년)", font=font_subtitle, fill='#666666', anchor='mm')
     
@@ -722,9 +722,9 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
                                    radius=5, fill=bg_color, outline=border_color, width=border_width)
             
             한자 = 천간_한자[천간]
-            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
                       f"{천간}({한자})", font=font_large, fill=text_color, anchor='mm')
-            draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
+            draw.text((x + cell_width // 2, current_y + cell_height_main - 8),
                       세운['천간_십성'], font=font_small, fill=text_color, anchor='mm')
         
         current_y += cell_height_main
@@ -746,9 +746,9 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
                                    radius=5, fill=bg_color, outline=border_color, width=border_width)
             
             한자 = 지지_한자[지지]
-            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
                       f"{지지}({한자})", font=font_large, fill=text_color, anchor='mm')
-            draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
+            draw.text((x + cell_width // 2, current_y + cell_height_main - 8),
                       세운['지지_십성'], font=font_small, fill=text_color, anchor='mm')
         
         current_y += cell_height_main
@@ -815,21 +815,21 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     row1 = 월운_list[:6]
     row2 = 월운_list[6:12]
     
-    # 크기 설정
-    margin = 40
+    # 크기 설정 (축소)
+    margin = 20
     cols_per_row = 6
-    cell_width = 130
-    cell_height_small = 45
-    cell_height_main = 90
-    label_width = 90
+    cell_width = 85
+    cell_height_small = 28
+    cell_height_main = 55
+    label_width = 55
     
     content_width = label_width + (cell_width * cols_per_row)
     width = content_width + (margin * 2)
     
-    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2  # 12운성 + 12신살 추가
-    title_area = 70
-    row_gap = 25
-    vertical_margin = 35
+    row_height = cell_height_small + cell_height_main * 2 + cell_height_small * 2
+    title_area = 50
+    row_gap = 15
+    vertical_margin = 20
     
     height = vertical_margin * 2 + title_area + row_height * 2 + row_gap
     
@@ -837,19 +837,19 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
-    font_title = get_font(32, bold=True)
-    font_subtitle = get_font(18, bold=True)
-    font_large = get_font(40, bold=True)
-    font_medium = get_font(20, bold=True)
-    font_small = get_font(16, bold=True)
+    # 폰트 (축소)
+    font_title = get_font(24, bold=True)
+    font_subtitle = get_font(11, bold=True)
+    font_large = get_font(24, bold=True)
+    font_medium = get_font(11, bold=True)
+    font_small = get_font(10, bold=True)
     
     border_color = '#AAAAAA'
-    border_width = 2
+    border_width = 1
     
     # 제목
-    title_y = vertical_margin + 25
-    subtitle_y = vertical_margin + 55
+    title_y = vertical_margin + 18
+    subtitle_y = vertical_margin + 38
     draw.text((width // 2, title_y), f"{기본정보['이름']}님 월운표", font=font_title, fill='#333333', anchor='mm')
     draw.text((width // 2, subtitle_y), f"{월운_list[0]['년도']}년 {월운_list[0]['월']}월 ~ {월운_list[-1]['년도']}년 {월운_list[-1]['월']}월 (12개월)", font=font_subtitle, fill='#666666', anchor='mm')
     
@@ -889,9 +889,9 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
                                    radius=5, fill=bg_color, outline=border_color, width=border_width)
             
             한자 = 천간_한자[천간]
-            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
                       f"{천간}({한자})", font=font_large, fill=text_color, anchor='mm')
-            draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
+            draw.text((x + cell_width // 2, current_y + cell_height_main - 8),
                       월운['천간_십성'], font=font_small, fill=text_color, anchor='mm')
         
         current_y += cell_height_main
@@ -913,9 +913,9 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
                                    radius=5, fill=bg_color, outline=border_color, width=border_width)
             
             한자 = 지지_한자[지지]
-            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 10),
+            draw.text((x + cell_width // 2, current_y + cell_height_main // 2 - 8),
                       f"{지지}({한자})", font=font_large, fill=text_color, anchor='mm')
-            draw.text((x + cell_width // 2, current_y + cell_height_main - 18),
+            draw.text((x + cell_width // 2, current_y + cell_height_main - 8),
                       월운['지지_십성'], font=font_small, fill=text_color, anchor='mm')
         
         current_y += cell_height_main
