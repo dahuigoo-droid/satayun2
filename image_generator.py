@@ -2379,18 +2379,18 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
     
     # 이미지 크기 (상하 여백 동일: 약 13px)
     width = 580
-    height = 383
+    height = 400
     
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
     # 폰트 (통일)
     font_title = get_font(24, bold=True)
-    font_header = get_font(12, bold=True)
+    font_header = get_font(14, bold=True)  # 헤더 라벨 크게
     font_medium = get_font(14, bold=True)
     font_small = get_font(12, bold=True)
-    font_large = get_font(24, bold=True)
-    font_desc = get_font(16)
+    font_large = get_font(28, bold=True)  # 오행 글자 더 크게
+    font_desc = get_font(11, bold=True)  # 설명 bold
     
     # 오행별 색상
     오행_텍스트색 = {
@@ -2429,9 +2429,9 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
     
     # ========== 조후/억부/통관 3박스 ==========
     box_y = 95
-    box_width = 170
-    box_height = 85
-    box_gap = 12
+    box_width = 175
+    box_height = 90
+    box_gap = 10
     start_x = (width - (box_width * 3 + box_gap * 2)) // 2
     
     boxes = [
@@ -2447,35 +2447,35 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
         draw.rectangle([x, box_y, x + box_width, box_y + box_height],
                        fill=bg_color, outline='#E0E0E0')
         
-        # 헤더
-        draw.rectangle([x, box_y, x + box_width, box_y + 24],
+        # 헤더 (폰트 크게)
+        draw.rectangle([x, box_y, x + box_width, box_y + 26],
                        fill=header_color)
-        draw.text((x + box_width // 2, box_y + 12), label, 
-                  font=font_small, fill='#FFFFFF', anchor='mm')
+        draw.text((x + box_width // 2, box_y + 13), label, 
+                  font=font_header, fill='#FFFFFF', anchor='mm')
         
         # 오행 글자
         if 오행명 and 오행명 != '-':
             오행_색 = 오행_텍스트색.get(오행명, '#333333')
-            draw.text((x + box_width // 2, box_y + 48), 오행명, 
+            draw.text((x + box_width // 2, box_y + 52), 오행명, 
                       font=font_large, fill=오행_색, anchor='mm')
         else:
-            draw.text((x + box_width // 2, box_y + 48), '-', 
+            draw.text((x + box_width // 2, box_y + 52), '-', 
                       font=font_large, fill='#BDBDBD', anchor='mm')
         
-        # 설명 (줄임)
-        설명_short = 설명[:18] + '...' if len(설명) > 18 else 설명
-        draw.text((x + box_width // 2, box_y + 72), 설명_short, 
+        # 설명 (길이 늘림)
+        설명_short = 설명[:22] + '..' if len(설명) > 22 else 설명
+        draw.text((x + box_width // 2, box_y + 78), 설명_short, 
                   font=font_desc, fill='#666666', anchor='mm')
     
     # ========== [최종 구조 요약] ==========
     summary_y = box_y + box_height + 18
-    draw.rectangle([20, summary_y, width - 20, summary_y + 28],
-                   fill='#F5F5F5', outline='#E0E0E0')
-    draw.text((width // 2, summary_y + 14), "[ 최종 구조 요약 ]", 
-              font=font_header, fill='#333333', anchor='mm')
+    draw.rectangle([20, summary_y, width - 20, summary_y + 32],
+                   fill='#FFF8E1', outline='#FFE082')  # 노란 배경
+    draw.text((width // 2, summary_y + 16), "[ 최종 구조 요약 ]", 
+              font=get_font(16, bold=True), fill='#E65100', anchor='mm')
     
     # ========== 5신 박스 ==========
-    신_y = summary_y + 40
+    신_y = summary_y + 45
     신_box_width = 100
     신_box_height = 75
     신_gap = 8
@@ -2522,18 +2522,18 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
             draw.text((x + 신_box_width // 2, 신_y + 42), '-', 
                       font=font_large, fill='#BDBDBD', anchor='mm')
         
-        # 역할 (줄임)
+        # 역할 (bold)
         역할_short = 역할[:8] if 역할 and len(역할) > 8 else (역할 or '-')
         draw.text((x + 신_box_width // 2, 신_y + 65), 역할_short, 
-                  font=font_desc, fill='#666666', anchor='mm')
+                  font=font_desc, fill='#333333', anchor='mm')
     
     # ========== 최종 순환 구조 ==========
     cycle_y = 신_y + 신_box_height + 12
-    draw.rectangle([20, cycle_y, width - 20, cycle_y + 45],
+    draw.rectangle([20, cycle_y, width - 20, cycle_y + 50],
                    fill='#E8F5E9', outline='#A5D6A7')
     
-    draw.text((width // 2, cycle_y + 12), "● 최종 순환 구조", 
-              font=font_header, fill='#2E7D32', anchor='mm')
+    draw.text((width // 2, cycle_y + 14), "● 최종 순환 구조", 
+              font=get_font(14, bold=True), fill='#2E7D32', anchor='mm')
     
     # 순환 구조 생성 (용신 → 희신 → 한신 → 용신)
     용신_오행 = 용신_data['용신']
@@ -2551,8 +2551,8 @@ def create_용신표(사주_data, 기본정보, output_path="용신표.png"):
         순환_parts.append(용신_오행)
     
     순환_str = ' → '.join(순환_parts) if 순환_parts else '순환 없음'
-    draw.text((width // 2, cycle_y + 32), 순환_str, 
-              font=font_medium, fill='#1B5E20', anchor='mm')
+    draw.text((width // 2, cycle_y + 36), 순환_str, 
+              font=get_font(16, bold=True), fill='#1B5E20', anchor='mm')
     
     img.save(output_path, 'PNG')
     return output_path
