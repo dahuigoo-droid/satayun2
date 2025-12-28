@@ -416,13 +416,12 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
             draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_sinsal],
                                    radius=5, fill='#FFFEF0', outline=border_color, width=border_width)
             
-            # 수정: 올바른 데이터 접근
             천간_신살_dict = 신살_data.get('천간신살', {})
             천간_신살_list = 천간_신살_dict.get(col, [])
             if 천간_신살_list:
                 text = '\n'.join(천간_신살_list[:3])
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), text,
-                          font=get_font(10, bold=True), fill='#333333', anchor='mm')
+                          font=get_font(12, bold=True), fill='#1565C0', anchor='mm')
             else:
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), "-",
                           font=font_sinsal, fill='#CCCCCC', anchor='mm')
@@ -440,13 +439,12 @@ def create_원국표(사주_data, 기본정보, output_path="원국표.png", 신
             draw.rounded_rectangle([x, current_y, x + cell_width, current_y + cell_height_sinsal],
                                    radius=5, fill='#F0FFF0', outline=border_color, width=border_width)
             
-            # 수정: 올바른 데이터 접근
             지지_신살_dict = 신살_data.get('지지신살', {})
             지지_신살_list = 지지_신살_dict.get(col, [])
             if 지지_신살_list:
                 text = '\n'.join(지지_신살_list[:3])
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), text,
-                          font=get_font(10, bold=True), fill='#333333', anchor='mm')
+                          font=get_font(12, bold=True), fill='#E65100', anchor='mm')
             else:
                 draw.text((x + cell_width // 2, current_y + cell_height_sinsal // 2), "-",
                           font=font_sinsal, fill='#CCCCCC', anchor='mm')
@@ -1837,11 +1835,14 @@ def create_12운성표(사주_data, 기본정보, output_path="12운성표.png")
         draw.text((x, summary_y + 58), f"{지지명} -> {운성}", font=font_medium, fill=색상, anchor='mm')
         draw.text((x, summary_y + 78), f"({에너지_상태})", font=font_small, fill='#999999', anchor='mm')
     
-    # 범례
+    # 범례 (가운데 정렬)
     legend_y = summary_y + 105
-    draw.text((20, legend_y), "강한 운성: 건록, 제왕, 관대", font=font_small, fill='#1565C0', anchor='lm')
-    draw.text((250, legend_y), "약한 운성: 병, 사, 묘, 절", font=font_small, fill='#C62828', anchor='lm')
-    draw.text((450, legend_y), "시작 운성: 장생, 태, 양", font=font_small, fill='#7B1FA2', anchor='lm')
+    legend_x1 = start_x + table_width // 6
+    legend_x2 = start_x + table_width // 2
+    legend_x3 = start_x + table_width * 5 // 6
+    draw.text((legend_x1, legend_y), "강한 운성: 건록, 제왕, 관대", font=font_small, fill='#1565C0', anchor='mm')
+    draw.text((legend_x2, legend_y), "약한 운성: 병, 사, 묘, 절", font=font_small, fill='#C62828', anchor='mm')
+    draw.text((legend_x3, legend_y), "시작 운성: 장생, 태, 양", font=font_small, fill='#7B1FA2', anchor='mm')
     
     img.save(output_path, 'PNG')
     return output_path
@@ -2256,9 +2257,10 @@ def create_납음오행표(사주_data, 기본정보, output_path="납음오행�
     
     box_width = 145
     box_height = 120
-    start_x = 30
-    box_y = 60
     gap = 10
+    total_width = box_width * 4 + gap * 3
+    start_x = (width - total_width) // 2  # 중앙 정렬
+    box_y = 60
     
     오행_색상 = {'목': '#4CAF50', '화': '#F44336', '토': '#795548', '금': '#FFC107', '수': '#2196F3'}
     
@@ -2277,7 +2279,7 @@ def create_납음오행표(사주_data, 기본정보, output_path="납음오행�
         draw.text((x + box_width // 2, box_y + 108), 정보['설명'][:10], font=font_small, fill='#999999', anchor='mm')
     
     summary_y = box_y + box_height + 15
-    draw.rectangle([20, summary_y, width - 20, summary_y + 40], fill='#FFF8E1', outline='#FFE082')
+    draw.rectangle([start_x, summary_y, start_x + total_width, summary_y + 40], fill='#FFF8E1', outline='#FFE082')
     일주_납음 = 납음['일']
     draw.text((width // 2, summary_y + 20), f"본명 납음: {일주_납음['납음']}({일주_납음['오행']}) - {일주_납음['설명'][:15]}", 
               font=font_medium, fill='#E65100', anchor='mm')
