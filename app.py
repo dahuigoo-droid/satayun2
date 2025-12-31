@@ -317,17 +317,23 @@ def generate_gpt_text(사주, 기본정보, gender, 대운_data, 세운_data, �
 # ============================================
 # 음력 → 양력 변환 함수
 # ============================================
-def 음력_to_양력(year, month, day):
-    """음력 날짜를 양력으로 변환"""
+def 음력_to_양력(year, month, day, 윤달=False):
+    """음력 날짜를 양력으로 변환 (윤달 지원)"""
     calendar = KoreanLunarCalendar()
-    calendar.setLunarDate(year, month, day, False)
+    calendar.setLunarDate(year, month, day, 윤달)
     return calendar.solarYear, calendar.solarMonth, calendar.solarDay
 
 def 양력_to_음력(year, month, day):
-    """양력 날짜를 음력으로 변환"""
+    """양력 날짜를 음력으로 변환 (윤달 여부 포함)"""
     calendar = KoreanLunarCalendar()
     calendar.setSolarDate(year, month, day)
-    return calendar.lunarYear, calendar.lunarMonth, calendar.lunarDay
+    윤달여부 = calendar.isIntercalation
+    return calendar.lunarYear, calendar.lunarMonth, calendar.lunarDay, 윤달여부
+
+def 음력_문자열(year, month, day, 윤달=False):
+    """음력 날짜를 문자열로 변환 (윤달 표시 포함)"""
+    윤_표시 = "윤" if 윤달 else ""
+    return f"{year}-{윤_표시}{month:02d}-{day:02d}"
 
 # ============================================
 # 페이지 설정
@@ -403,6 +409,8 @@ with tab1:
         st.session_state.input_성별 = "남성"
     if 'input_음양력' not in st.session_state:
         st.session_state.input_음양력 = "양력"
+    if 'input_윤달' not in st.session_state:
+        st.session_state.input_윤달 = False
     if '생성된_이미지' not in st.session_state:
         st.session_state.생성된_이미지 = {}
     
@@ -425,7 +433,15 @@ with tab1:
         with 시간_col2:
             분 = st.number_input("분", min_value=0, max_value=59, value=st.session_state.input_분)
         
-        음양력 = st.radio("음력/양력", ["양력", "음력"], horizontal=True, index=0 if st.session_state.input_음양력 == "양력" else 1)
+        음력_col1, 음력_col2 = st.columns([2, 1])
+        with 음력_col1:
+            음양력 = st.radio("음력/양력", ["양력", "음력"], horizontal=True, index=0 if st.session_state.input_음양력 == "양력" else 1)
+        with 음력_col2:
+            # 음력 선택 시에만 윤달 체크박스 표시
+            if 음양력 == "음력":
+                윤달 = st.checkbox("윤달", value=st.session_state.input_윤달)
+            else:
+                윤달 = False
     
     st.divider()
     
@@ -449,6 +465,7 @@ with tab1:
         st.session_state.input_분 = 0
         st.session_state.input_성별 = "남성"
         st.session_state.input_음양력 = "양력"
+        st.session_state.input_윤달 = False
         st.session_state.생성된_이미지 = {}
         if 'gpt_text' in st.session_state:
             del st.session_state.gpt_text
@@ -465,16 +482,16 @@ with tab1:
                 input_month = 생년월일.month
                 input_day = 생년월일.day
                 
-                # 음력/양력 변환
+                # 음력/양력 변환 (윤달 지원)
                 if 음양력 == "음력":
-                    year, month, day = 음력_to_양력(input_year, input_month, input_day)
-                    음력_str = f"{input_year}-{input_month:02d}-{input_day:02d}"
+                    year, month, day = 음력_to_양력(input_year, input_month, input_day, 윤달)
+                    음력_str = 음력_문자열(input_year, input_month, input_day, 윤달)
                     양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
                 else:
                     year, month, day = input_year, input_month, input_day
                     양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
-                    음력_year, 음력_month, 음력_day = 양력_to_음력(year, month, day)
-                    음력_str = f"{음력_year}-{음력_month:02d}-{음력_day:02d}"
+                    음력_year, 음력_month, 음력_day, 음력_윤달 = 양력_to_음력(year, month, day)
+                    음력_str = 음력_문자열(음력_year, 음력_month, 음력_day, 음력_윤달)
                 
                 # 사주 계산
                 사주 = calc_사주(year, month, day, 시, 분)
@@ -530,16 +547,16 @@ with tab1:
                 input_month = 생년월일.month
                 input_day = 생년월일.day
                 
-                # 음력/양력 변환
+                # 음력/양력 변환 (윤달 지원)
                 if 음양력 == "음력":
-                    year, month, day = 음력_to_양력(input_year, input_month, input_day)
-                    음력_str = f"{input_year}-{input_month:02d}-{input_day:02d}"
+                    year, month, day = 음력_to_양력(input_year, input_month, input_day, 윤달)
+                    음력_str = 음력_문자열(input_year, input_month, input_day, 윤달)
                     양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
                 else:
                     year, month, day = input_year, input_month, input_day
                     양력_str = f"{year}-{month:02d}-{day:02d} {시:02d}:{분:02d}"
-                    음력_year, 음력_month, 음력_day = 양력_to_음력(year, month, day)
-                    음력_str = f"{음력_year}-{음력_month:02d}-{음력_day:02d}"
+                    음력_year, 음력_month, 음력_day, 음력_윤달 = 양력_to_음력(year, month, day)
+                    음력_str = 음력_문자열(음력_year, 음력_month, 음력_day, 음력_윤달)
                 
                 # 사주 계산
                 사주 = calc_사주(year, month, day, 시, 분)
@@ -752,7 +769,8 @@ with tab2:
         '생일': [15, 3],
         '시': [14, 8],
         '분': [30, 0],
-        '음양력': ['양력', '양력'],
+        '음양력': ['양력', '음력'],
+        '윤달': ['', 'O'],  # 음력일 때만 O 표시
     }
     sample_df = pd.DataFrame(sample_data)
     
@@ -767,12 +785,19 @@ with tab2:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     
+    st.info("💡 **윤달 입력 방법**: 음력 생일이 윤달인 경우 '윤달' 컬럼에 'O' 입력")
+    
     st.divider()
     
     uploaded_file = st.file_uploader("엑셀 파일 선택", type=['xlsx', 'xls'])
     
     if uploaded_file:
         df = pd.read_excel(uploaded_file)
+        
+        # 윤달 컬럼이 없으면 추가
+        if '윤달' not in df.columns:
+            df['윤달'] = ''
+        
         st.write(f"**{len(df)}명 데이터 확인:**")
         st.dataframe(df, use_container_width=True)
         
@@ -790,15 +815,19 @@ with tab2:
                     input_month = int(row['생월'])
                     input_day = int(row['생일'])
                     
+                    # 윤달 여부 확인 (O, o, ○, 1, True 등)
+                    윤달_값 = str(row.get('윤달', '')).strip().upper()
+                    윤달 = 윤달_값 in ['O', '○', '1', 'TRUE', 'Y', 'YES', '윤달']
+                    
                     if row['음양력'] == "음력":
-                        year, month, day = 음력_to_양력(input_year, input_month, input_day)
-                        음력_str = f"{input_year}-{input_month:02d}-{input_day:02d}"
+                        year, month, day = 음력_to_양력(input_year, input_month, input_day, 윤달)
+                        음력_str = 음력_문자열(input_year, input_month, input_day, 윤달)
                         양력_str = f"{year}-{month:02d}-{day:02d} {int(row['시']):02d}:{int(row['분']):02d}"
                     else:
                         year, month, day = input_year, input_month, input_day
                         양력_str = f"{year}-{month:02d}-{day:02d} {int(row['시']):02d}:{int(row['분']):02d}"
-                        음력_year, 음력_month, 음력_day = 양력_to_음력(year, month, day)
-                        음력_str = f"{음력_year}-{음력_month:02d}-{음력_day:02d}"
+                        음력_year, 음력_month, 음력_day, 음력_윤달 = 양력_to_음력(year, month, day)
+                        음력_str = 음력_문자열(음력_year, 음력_month, 음력_day, 음력_윤달)
                     
                     사주 = calc_사주(year, month, day, int(row['시']), int(row['분']))
                     나이 = datetime.now().year - year + 1
