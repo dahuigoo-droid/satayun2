@@ -1,5 +1,6 @@
 # 만세력 계산기 v1
 # 샘플 데이터로 로직 검증
+from functools import lru_cache
 
 # ============================================
 # 기본 데이터 테이블
@@ -17,9 +18,13 @@
 지지_오행 = ['수', '토', '목', '목', '토', '화', '화', '토', '금', '금', '토', '수']
 지지_음양 = ['양', '음', '양', '음', '양', '음', '양', '음', '양', '음', '양', '음']
 
-# 60갑자
+# 빠른 조회를 위한 인덱스 맵 (O(1) 조회)
+천간_index = {c: i for i, c in enumerate(천간)}
+지지_index = {j: i for i, j in enumerate(지지)}
+
+@lru_cache(maxsize=128)
 def get_60갑자(index):
-    """60갑자 인덱스로 천간/지지 반환"""
+    """60갑자 인덱스로 천간/지지 반환 (캐싱)"""
     천간_idx = index % 10
     지지_idx = index % 12
     return 천간[천간_idx], 지지[지지_idx]
@@ -602,7 +607,7 @@ def calc_세운(year, month, day, hour, minute, 기준년=None):
 # ============================================
 def calc_월운(year, month, day, hour, minute, 기준년=None, 기준월=None):
     """
-    월운 계산 (당해월부터 14개월)
+    월운 계산 (당해월부터 18개월)
     """
     from datetime import datetime
     
@@ -621,7 +626,7 @@ def calc_월운(year, month, day, hour, minute, 기준년=None, 기준월=None):
     현재_년 = 기준년
     현재_월 = 기준월
     
-    for i in range(14):  # 14개월로 변경
+    for i in range(18):  # 18개월
         # 해당 년의 년간 계산
         년_천간, _ = calc_년주(현재_년, 6, 15)
         

@@ -855,19 +855,20 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
 # ============================================
 def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     """
-    월운표 이미지 생성 (2행 구조, 투명 배경)
+    월운표 이미지 생성 (3행 구조, 투명 배경)
     """
     
     월운_list = 월운_data['월운']
     
-    # 7개씩 2행으로 분할 (14개월)
-    row1 = 월운_list[:7]
-    row2 = 월운_list[7:14]
+    # 6개씩 3행으로 분할 (18개월)
+    row1 = 월운_list[:6]
+    row2 = 월운_list[6:12]
+    row3 = 월운_list[12:18]
     
-    # 크기 설정 (7열로 변경)
+    # 크기 설정 (6열)
     margin = 20
-    cols_per_row = 7
-    cell_width = 80
+    cols_per_row = 6
+    cell_width = 85
     cell_height_small = 28
     cell_height_main = 55
     label_width = 55
@@ -880,7 +881,7 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     row_gap = 15
     vertical_margin = 20
     
-    height = vertical_margin * 2 + title_area + row_height * 2 + row_gap
+    height = vertical_margin * 2 + title_area + row_height * 3 + row_gap * 2  # 3행
     
     # 투명 배경
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
@@ -900,7 +901,7 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     title_y = vertical_margin + 18
     subtitle_y = vertical_margin + 38
     draw.text((width // 2, title_y), f"{기본정보['이름']}님 월운표", font=font_title, fill='#333333', anchor='mm')
-    draw.text((width // 2, subtitle_y), f"{월운_list[0]['년도']}년 {월운_list[0]['월']}월 ~ {월운_list[-1]['년도']}년 {월운_list[-1]['월']}월 (14개월)", font=font_subtitle, fill='#666666', anchor='mm')
+    draw.text((width // 2, subtitle_y), f"{월운_list[0]['년도']}년 {월운_list[0]['월']}월 ~ {월운_list[-1]['년도']}년 {월운_list[-1]['월']}월 (18개월)", font=font_subtitle, fill='#666666', anchor='mm')
     
     def draw_월운_row(월운_list, start_y, row_num):
         current_y = start_y
@@ -1009,6 +1010,9 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     
     # 2행 그리기
     y2_end = draw_월운_row(row2, y1_end + row_gap, 2)
+    
+    # 3행 그리기
+    y3_end = draw_월운_row(row3, y2_end + row_gap, 3)
     
     # 저장
     img.save(output_path, 'PNG')
