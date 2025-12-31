@@ -433,15 +433,14 @@ with tab1:
         with 시간_col2:
             분 = st.number_input("분", min_value=0, max_value=59, value=st.session_state.input_분)
         
-        음력_col1, 음력_col2 = st.columns([2, 1])
-        with 음력_col1:
-            음양력 = st.radio("음력/양력", ["양력", "음력"], horizontal=True, index=0 if st.session_state.input_음양력 == "양력" else 1)
-        with 음력_col2:
-            # 음력 선택 시에만 윤달 체크박스 표시
-            if 음양력 == "음력":
-                윤달 = st.checkbox("윤달", value=st.session_state.input_윤달)
-            else:
-                윤달 = False
+        # 음력/양력 + 윤달 체크박스를 한 줄에 배치
+        음양력 = st.radio("음력/양력", ["양력", "음력"], horizontal=True, index=0 if st.session_state.input_음양력 == "양력" else 1)
+        
+        # 음력 선택 시에만 윤달 체크박스 표시 (바로 아래에)
+        if 음양력 == "음력":
+            윤달 = st.checkbox("☑ 윤달 (음력 생일이 윤달인 경우 체크)", value=st.session_state.input_윤달)
+        else:
+            윤달 = False
     
     st.divider()
     
