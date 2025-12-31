@@ -1,6 +1,8 @@
 # 사주 원국표 이미지 생성기
 from PIL import Image, ImageDraw, ImageFont
 import os
+from functools import lru_cache
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================
 # 지지 이모지 및 동물 이름 매핑
@@ -18,30 +20,54 @@ import os
 }
 
 # ============================================
-# 폰트 설정
+# 폰트 캐싱 (성능 최적화)
 # ============================================
-def get_font(size, bold=False):
-    """한글+한자 폰트 로드 (Noto Sans CJK 우선)"""
-    if bold:
-        font_paths = [
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc",  # 가장 굵은 폰트
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Medium.ttc",
-            "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
-        ]
-    else:
-        font_paths = [
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-            "/usr/share/fonts/opentype/noto/NotoSansCJK-Medium.ttc",
-            "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-        ]
+_FONT_CACHE = {}
+_BOLD_PATH = None
+_REGULAR_PATH = None
+
+def _init_font_paths():
+    """폰트 경로 초기화 (한 번만 실행)"""
+    global _BOLD_PATH, _REGULAR_PATH
     
-    for path in font_paths:
+    bold_candidates = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+    ]
+    regular_candidates = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+    ]
+    
+    for path in bold_candidates:
         if os.path.exists(path):
-            try:
-                return ImageFont.truetype(path, size)
-            except:
-                continue
+            _BOLD_PATH = path
+            break
+    
+    for path in regular_candidates:
+        if os.path.exists(path):
+            _REGULAR_PATH = path
+            break
+
+# 모듈 로드 시 폰트 경로 초기화
+_init_font_paths()
+
+def get_font(size, bold=False):
+    """폰트 캐싱으로 빠른 로드"""
+    cache_key = (size, bold)
+    
+    if cache_key in _FONT_CACHE:
+        return _FONT_CACHE[cache_key]
+    
+    path = _BOLD_PATH if bold else _REGULAR_PATH
+    if path:
+        try:
+            font = ImageFont.truetype(path, size)
+            _FONT_CACHE[cache_key] = font
+            return font
+        except:
+            pass
     
     return ImageFont.load_default()
 
@@ -804,9 +830,10 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
 # ============================================# ============================================
 # 월운표 이미지 생성
 # ============================================
-def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
+def create_월운표(월운_data, 기본정보, output_path="월운표.png", custom_font_path=None):
     """
     월운표 이미지 생성 (2행 구조, 투명 배경)
+    custom_font_path: 사용자 지정 폰트 경로 (기본값: ChosunGs.TTF)
     """
     
     월운_list = 월운_data['월운']
@@ -837,12 +864,24 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # 폰트
-    font_title = get_font(24, bold=True)
-    font_subtitle = get_font(11, bold=True)
-    font_large = get_font(22, bold=True)
-    font_medium = get_font(10, bold=True)
-    font_small = get_font(9, bold=True)
+    # ChosunGs 폰트 로드 (월운표 전용)
+    chosun_font_path = custom_font_path or os.path.join(os.path.dirname(__file__), 'fonts', 'ChosunGs.TTF')
+    
+    def get_chosun_font(size):
+        """ChosunGs 폰트 로드 (없으면 기본 폰트)"""
+        if os.path.exists(chosun_font_path):
+            try:
+                return ImageFont.truetype(chosun_font_path, size)
+            except:
+                pass
+        return get_font(size, bold=True)
+    
+    # 폰트 (ChosunGs 적용)
+    font_title = get_chosun_font(24)
+    font_subtitle = get_chosun_font(11)
+    font_large = get_chosun_font(22)
+    font_medium = get_chosun_font(10)
+    font_small = get_chosun_font(9)
     
     border_color = '#AAAAAA'
     border_width = 1
@@ -2770,3 +2809,79 @@ def create_일진표(year, month, 기본정보=None, output_path="일진표.png"
     
     img.save(output_path, 'PNG')
     return output_path
+
+
+# ============================================
+# 병렬 이미지 생성 (성능 최적화)
+# ============================================
+def generate_all_images_parallel(사주_data, 대운_data, 세운_data, 월운_data, 
+                                  기본정보, 신살_data=None, output_dir="/tmp",
+                                  zodiac_path=None, max_workers=4):
+    """
+    모든 이미지를 병렬로 생성 (대형 서비스용 최적화)
+    
+    Args:
+        max_workers: 동시 처리 스레드 수 (기본 4)
+    
+    Returns:
+        dict: 이미지 파일 경로들
+    """
+    import os
+    
+    # 이미지 생성 태스크 정의
+    tasks = [
+        ('원국표', create_원국표, (사주_data, 기본정보, f"{output_dir}/원국표.png", 신살_data, zodiac_path)),
+        ('대운표', create_대운표, (대운_data, 기본정보, f"{output_dir}/대운표.png")),
+        ('세운표', create_세운표, (세운_data, 기본정보, f"{output_dir}/세운표.png")),
+        ('월운표', create_월운표, (월운_data, 기본정보, f"{output_dir}/월운표.png")),
+        ('12운성표', create_12운성표, (사주_data, 기본정보, f"{output_dir}/12운성표.png")),
+        ('지장간표', create_지장간표, (사주_data, 기본정보, f"{output_dir}/지장간표.png")),
+        ('납음오행표', create_납음오행표, (사주_data, 기본정보, f"{output_dir}/납음오행표.png")),
+        ('오행차트', create_오행차트, (사주_data, 기본정보, f"{output_dir}/오행차트.png")),
+    ]
+    
+    # 신살 데이터가 있으면 신살표 추가
+    if 신살_data:
+        tasks.append(('신살표', create_신살표, (신살_data, 기본정보, f"{output_dir}/신살표.png")))
+    
+    results = {}
+    
+    # 병렬 실행
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_name = {}
+        
+        for name, func, args in tasks:
+            future = executor.submit(func, *args)
+            future_to_name[future] = name
+        
+        for future in as_completed(future_to_name):
+            name = future_to_name[future]
+            try:
+                result = future.result()
+                results[name] = result
+            except Exception as e:
+                results[name] = f"Error: {e}"
+    
+    return results
+
+
+def preload_fonts():
+    """
+    자주 사용하는 폰트 미리 로드 (앱 시작 시 호출)
+    """
+    common_sizes = [10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 40]
+    
+    for size in common_sizes:
+        get_font(size, bold=True)
+        get_font(size, bold=False)
+    
+    return len(_FONT_CACHE)
+
+
+def get_cache_stats():
+    """캐시 상태 확인"""
+    return {
+        'font_cache_size': len(_FONT_CACHE),
+        'bold_font_path': _BOLD_PATH,
+        'regular_font_path': _REGULAR_PATH,
+    }
