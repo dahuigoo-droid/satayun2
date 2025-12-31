@@ -23,12 +23,25 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # 폰트 캐싱 (성능 최적화)
 # ============================================
 _FONT_CACHE = {}
+_CHOSUN_PATH = None
 _BOLD_PATH = None
 _REGULAR_PATH = None
 
 def _init_font_paths():
     """폰트 경로 초기화 (한 번만 실행)"""
-    global _BOLD_PATH, _REGULAR_PATH
+    global _CHOSUN_PATH, _BOLD_PATH, _REGULAR_PATH
+    
+    # ChosunGs 폰트 경로 (우선)
+    chosun_candidates = [
+        os.path.join(os.path.dirname(__file__), 'fonts', 'ChosunGs.TTF'),
+        '/home/claude/satayun2_new/fonts/ChosunGs.TTF',
+        './fonts/ChosunGs.TTF',
+    ]
+    
+    for path in chosun_candidates:
+        if os.path.exists(path):
+            _CHOSUN_PATH = path
+            break
     
     bold_candidates = [
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc",
@@ -54,12 +67,22 @@ def _init_font_paths():
 _init_font_paths()
 
 def get_font(size, bold=False):
-    """폰트 캐싱으로 빠른 로드"""
+    """폰트 캐싱으로 빠른 로드 (ChosunGs 우선)"""
     cache_key = (size, bold)
     
     if cache_key in _FONT_CACHE:
         return _FONT_CACHE[cache_key]
     
+    # ChosunGs 폰트 우선 사용
+    if _CHOSUN_PATH:
+        try:
+            font = ImageFont.truetype(_CHOSUN_PATH, size)
+            _FONT_CACHE[cache_key] = font
+            return font
+        except:
+            pass
+    
+    # 폴백: 시스템 폰트
     path = _BOLD_PATH if bold else _REGULAR_PATH
     if path:
         try:
@@ -830,10 +853,9 @@ def create_세운표(세운_data, 기본정보, output_path="세운표.png"):
 # ============================================# ============================================
 # 월운표 이미지 생성
 # ============================================
-def create_월운표(월운_data, 기본정보, output_path="월운표.png", custom_font_path=None):
+def create_월운표(월운_data, 기본정보, output_path="월운표.png"):
     """
     월운표 이미지 생성 (2행 구조, 투명 배경)
-    custom_font_path: 사용자 지정 폰트 경로 (기본값: ChosunGs.TTF)
     """
     
     월운_list = 월운_data['월운']
@@ -864,24 +886,12 @@ def create_월운표(월운_data, 기본정보, output_path="월운표.png", cus
     img = Image.new('RGBA', (width, height), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
-    # ChosunGs 폰트 로드 (월운표 전용)
-    chosun_font_path = custom_font_path or os.path.join(os.path.dirname(__file__), 'fonts', 'ChosunGs.TTF')
-    
-    def get_chosun_font(size):
-        """ChosunGs 폰트 로드 (없으면 기본 폰트)"""
-        if os.path.exists(chosun_font_path):
-            try:
-                return ImageFont.truetype(chosun_font_path, size)
-            except:
-                pass
-        return get_font(size, bold=True)
-    
-    # 폰트 (ChosunGs 적용)
-    font_title = get_chosun_font(24)
-    font_subtitle = get_chosun_font(11)
-    font_large = get_chosun_font(22)
-    font_medium = get_chosun_font(10)
-    font_small = get_chosun_font(9)
+    # 폰트 (ChosunGs 자동 적용)
+    font_title = get_font(24, bold=True)
+    font_subtitle = get_font(11, bold=True)
+    font_large = get_font(22, bold=True)
+    font_medium = get_font(10, bold=True)
+    font_small = get_font(9, bold=True)
     
     border_color = '#AAAAAA'
     border_width = 1
